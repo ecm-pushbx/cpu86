@@ -907,13 +907,13 @@ WAITLDS:    CALL    RXCHARNE                    ; Wait for ':'
             MOV     DI,AX                       ; DI=Store Address
 
             CALL    RXBYTE                      ; Get Record Type
-            CMP     AL,EOF_REC                  ; End Of File Record
+            CMP     AL,EOF_REC                  ; End Of File Record ("01")
             JE      GOENDLD
-            CMP     AL,DATA_REC                 ; Data Record?
+            CMP     AL,DATA_REC                 ; Data Record? ("00")
             JE      GOLOAD
-            CMP     AL,EAD_REC                  ; Extended Address Record?
+            CMP     AL,EAD_REC                  ; Extended Address Record? ("02")
             JE      GOEAD
-            CMP     AL,SSA_REC                  ; Start Segment Address Record?
+            CMP     AL,SSA_REC                  ; Start Segment Address Record? ("03")
             JE      GOSSA
             JMP     ERROR ;ERRREC
 
