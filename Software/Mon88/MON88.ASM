@@ -50,8 +50,16 @@ ESC         EQU     01Bh
 
 ; Assume Clk=40MHz
 ;   Xtal=40MHz-> 40MHz/38400/16=65.10->65
-BRATE_LOW   EQU 65
-BRATE_HIGH  EQU 0
+;BRATE_LOW   EQU 65
+;BRATE_HIGH  EQU 0
+
+; Clock is apparently 5 MHz for the MAX1000 build
+CLOCK		equ 5_000_000
+BAUD		equ 9600
+BRATE		equ ((CLOCK + (BAUD * 16 / 2)) / (BAUD * 16))
+
+BRATE_LOW	equ BRATE & 255
+BRATE_HIGH	equ BRATE >> 8
 
 
 ; UART settings, COM1
