@@ -303,7 +303,7 @@ SETBREAKP:  MOV     BX,BPTAB             ; BX point to Breakpoint table
             MOV     AL,[ES:DI]                  ; Get the opcode
             MOV     [BX+2],AL                   ; Store in table
                         
-            JMP     strict near DISPBREAKP	; Display Enabled Breakpoints  
+            JMP     DISPBREAKP	; Display Enabled Breakpoints  
 
 ;----------------------------------------------------------------------
 ; Clear Breakpoint
@@ -317,7 +317,7 @@ CLRBREAKP:  MOV     BX,BPTAB             ; BX point to Breakpoint table
             ADD     BX,AX                       ; point to table entry 
             MOV     BYTE [BX+3],0               ; Clear Breakpoint
                                     
-            JMP     strict near DISPBREAKP	; Display Remaining Breakpoints
+            JMP     DISPBREAKP	; Display Remaining Breakpoints
 
 ;----------------------------------------------------------------------
 ; Display all enabled Breakpoints
@@ -522,7 +522,7 @@ CHANGEBS:   MOV     AX,ES                       ; WORD BASE_SEGMENT
 TRACENEXT:  MOV     AX,[UFL]                    ; Get User flags
             OR      AX,0100h                    ; set TF
             MOV     [UFL],AX
-            JMP     strict near TRACNENTRY
+            JMP     TRACNENTRY
                        
 ;----------------------------------------------------------------------
 ; Trace Program from Address
@@ -530,7 +530,7 @@ TRACENEXT:  MOV     AX,[UFL]                    ; Get User flags
 TRACEPROG:  MOV     AX,[UFL]                    ; Get User flags
             OR      AX,0100h                    ; set TF
             MOV     [UFL],AX
-            JMP     strict near TRACENTRY	; get execute address, save user registers etc
+            JMP     TRACENTRY	; get execute address, save user registers etc
                         
 ;----------------------------------------------------------------------
 ; Execute program
@@ -706,7 +706,7 @@ NEXTCH:     LODSB                               ; Get character AL=DS:[SI++]
             JBE     PRINTDOT
             CMP     AL,07Fh
             JAE     PRINTDOT
-            JMP     strict near PRINTCH
+            JMP     PRINTCH
 PRINTDOT:   MOV     AL,'.'
 PRINTCH:    CALL    TXCHAR                          
             LOOP    NEXTCH                      ; Next Character
@@ -782,11 +782,11 @@ NEXTBIT1:   LODSB                               ; Get display/notdisplay flag AL
             CMP     AL,'X'                      ; Display?
             JNE     SHFTCAR                     ; Yes, shift bit into carry and display it
             SAL     BX,1                        ; no, ignore bit
-            JMP     strict near EXITDISP1
+            JMP     EXITDISP1
 SHFTCAR:    SAL     BX,1
             JC      DISP1
             MOV     AL,'0'
-            JMP     strict near DISPBIT
+            JMP     DISPBIT
 DISP1:      MOV     AL,'1'
 DISPBIT:    CALL    TXCHAR
 EXITDISP1:  LOOP    NEXTBIT1
@@ -799,11 +799,11 @@ NEXTBIT2:   LODSB                               ; Get display/notdisplay flag AL
             CMP     AL,'X'                      ; Display?
             JNE     SHFTCAR2                    ; Yes, shift bit into carry and display it
             SAL     BX,1                        ; no, ignore bit
-            JMP     strict near EXITDISP2
+            JMP     EXITDISP2
 SHFTCAR2:   SAL     BX,1
             JC      DISP2
             MOV     AL,'0'
-            JMP     strict near DISPBIT2
+            JMP     DISPBIT2
 DISP2:      MOV     AL,'1'
 DISPBIT2:   CALL    TXCHAR
 EXITDISP2:  LOOP    NEXTBIT2
@@ -847,7 +847,7 @@ LOADHEX:    MOV     SI,LOAD_MESS         ; Display Ready to receive upload
             CALL    PUTS                        
             
             MOV     AL,'>'
-            JMP     strict near DISPCH
+            JMP     DISPCH
 
 RXBYTE:     XCHG    BH,AH                       ; save AH register
             CALL    RXNIB
@@ -938,7 +938,7 @@ GOENDLD:    CALL    RXBYTE
             ADD     AL,1
             CMP     AL,BL                       ; Checksum held in BL
             JNE     ERROR ;ERRCHKS
-            JMP     strict near LOADOK
+            JMP     LOADOK
 
 GOCHECK:    CALL    RXBYTE
             SUB     BL,AL                       ; Remove checksum from checksum
@@ -961,11 +961,11 @@ GOEAD:      CALL    RXBYTE
             JMP     GOCHECK
 
 ;ERRCHKS:    MOV     SI,LD_CHKS_MESS      ; Display Checksum error
-;            JMP     strict near EXITLD		; Exit Load Command
+;            JMP     EXITLD		; Exit Load Command
 ;ERRREC:     MOV     SI,LD_REC_MESS       ; Display unknown record type           
-;            JMP     strict near EXITLD		; Exit Load Command
+;            JMP     EXITLD		; Exit Load Command
 LOADOK:     MOV     SI,LD_OK_MESS        ; Display Load OK
-            JMP     strict near EXITLD
+            JMP     EXITLD
 ERRHEX:     MOV     SI,LD_HEX_MESS       ; Display Error hex value
 EXITLD:     CALL    PUTS
             JMP     CMD                         ; Exit Load Command
@@ -1002,7 +1002,7 @@ get_byte_:
             push        dx
             add         ax,word [bx]
             push        ax
-            call        near esprintf_
+            call        esprintf_
             add         sp,6
             add         word [bx],ax
 L$2:
@@ -1031,7 +1031,7 @@ L$3:
     mov         cx,word [-2+bp]
     mov         bx,word [-6+bp]
     mov         ax,di
-    call        near get_byte_
+    call        get_byte_
     inc         si
     jmp         L$3
 L$4:
@@ -1159,7 +1159,7 @@ disasm_:
     mov         word [-10H+bp],_opcode1
     mov         word [-6+bp],di
     mov         word [-8+bp],di
-    jmp         strict near L$14
+    jmp         L$14
 L$7:
     mov         al,byte [si]
     xor         ah,ah
@@ -1171,25 +1171,25 @@ L$7:
     mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
-    jmp         strict near L$13
+    jmp         L$13
 L$8:
     cmp         word [-8+bp],0
     jne         L$9
     mov         ax,1
-    jmp         strict near L$10
+    jmp         L$10
 L$9:
     xor         ax,ax
 L$10:
     mov         word [-8+bp],ax
-    jmp         strict near L$14
+    jmp         L$14
 L$11:
     mov         dx,L$452
 L$12:
     push        dx
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,4
 L$13:
     add         di,ax
@@ -1198,7 +1198,7 @@ L$14:
     mov         bx,word [-3eH+bp]
     lea         dx,[-4+bp]
     lea         ax,[-18H+bp]
-    call        near get_byte_
+    call        get_byte_
     mov         al,byte [-4+bp]
     xor         ah,ah
     mov         cl,3
@@ -1224,9 +1224,9 @@ L$16:
 L$17:
     push        ax
     push        word [-3cH+bp]
-    call        near esprintf_
+    call        esprintf_
     add         sp,4
-    jmp         near L$63
+    jmp         L$63
 L$18:
     mov         ax,L$455
     jmp         L$17
@@ -1239,7 +1239,7 @@ L$20:
     mov         bx,word [-3eH+bp]
     lea         dx,[-2+bp]
     lea         ax,[-18H+bp]
-    call        near get_byte_
+    call        get_byte_
     cmp         word [-12H+bp],0
     je          L$21
     mov         al,byte [si]
@@ -1275,7 +1275,7 @@ L$22:
     mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
     add         di,ax
 L$23:
@@ -1317,17 +1317,17 @@ L$27:
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_bytes_
+    call        get_bytes_
 L$28:
     push        word [-16H+bp]
     mov         ax,L$457
-    jmp         near L$48
+    jmp         L$48
 L$29:
     lea         cx,[-1aH+bp]
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_byte_
+    call        get_byte_
     jmp         L$28
 L$30:
     mov         ax,word [-8+bp]
@@ -1339,34 +1339,34 @@ L$30:
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_bytes_
+    call        get_bytes_
     push        word [-16H+bp]
-    jmp         strict near L$38
+    jmp         L$38
 L$31:
     mov         ax,2
     jmp         L$27
 L$32:
-    jmp         near L$63
+    jmp         L$63
 L$33:
     mov         bx,word [-6+bp]
     shl         bx,1
     push        word [_dssi_regs+bx]
     mov         ax,L$459
-    jmp         near L$48
+    jmp         L$48
 L$34:
-    jmp         near L$62
+    jmp         L$62
 L$35:
     mov         bx,word [-6+bp]
     shl         bx,1
     push        word [_esdi_regs+bx]
     mov         ax,L$460
-    jmp         near L$48
+    jmp         L$48
 L$36:
     lea         cx,[-1aH+bp]
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_byte_
+    call        get_byte_
     mov         al,byte [-16H+bp]
     xor         ah,ah
     add         ax,word [-18H+bp]
@@ -1374,7 +1374,7 @@ L$37:
     push        ax
 L$38:
     mov         ax,L$458
-    jmp         near L$48
+    jmp         L$48
 L$39:
     mov         ax,word [-8+bp]
     shl         ax,1
@@ -1385,7 +1385,7 @@ L$39:
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_bytes_
+    call        get_bytes_
     mov         ax,word [-18H+bp]
     add         ax,word [-16H+bp]
     jmp         L$37
@@ -1399,21 +1399,21 @@ L$40:
     mov         bx,word [-3eH+bp]
     lea         dx,[-16H+bp]
     lea         ax,[-18H+bp]
-    call        near get_bytes_
+    call        get_bytes_
     mov         ax,2
     push        ax
     lea         cx,[-1aH+bp]
     mov         bx,word [-3eH+bp]
     lea         dx,[-14H+bp]
     lea         ax,[-18H+bp]
-    call        near get_bytes_
+    call        get_bytes_
     push        word [-16H+bp]
     push        word [-14H+bp]
     mov         ax,L$461
     push        ax
     lea         ax,[-3aH+bp]
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,8
 L$41:
     lea         ax,[-3aH+bp]
@@ -1423,7 +1423,7 @@ L$41:
     mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
     add         di,ax
     mov         al,byte[ 1+si]
@@ -1436,19 +1436,19 @@ L$41:
     mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,4
     add         di,ax
 L$42:
     inc         word [-0cH+bp]
     inc         word [-0aH+bp]
-    jmp         near L$25
+    jmp         L$25
 L$43:
     mov         ax,1
 L$44:
     push        ax
     mov         ax,L$462
-    jmp         strict near L$48
+    jmp         L$48
 L$45:
     mov         ax,3
     jmp         L$44
@@ -1465,7 +1465,7 @@ L$48:
     push        ax
     lea         ax,[-3aH+bp]
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
     jmp         L$41
 L$49:
@@ -1487,7 +1487,7 @@ L$50:
     lea         cx,[-18H+bp]
     mov         bx,ax
     xor         dx,dx
-    jmp         strict near L$57
+    jmp         L$57
 L$51:
     lea         ax,[-3aH+bp]
     push        ax
@@ -1500,7 +1500,7 @@ L$51:
     inc         dx
     lea         cx,[-18H+bp]
     mov         bx,ax
-    jmp         strict near L$57
+    jmp         L$57
 L$52:
     lea         ax,[-3aH+bp]
     push        ax
@@ -1512,7 +1512,7 @@ L$52:
     lea         cx,[-18H+bp]
     mov         bx,ax
     mov         dx,1
-    jmp         strict near L$57
+    jmp         L$57
 L$53:
     mov         al,byte [-2+bp]
     mov         cl,3
@@ -1522,7 +1522,7 @@ L$53:
     and         bl,7
     shl         bx,1
     push        word [_ea_regs+bx]
-    jmp         near L$47
+    jmp         L$47
 L$54:
     mov         al,byte [-2+bp]
     mov         cl,3
@@ -1532,7 +1532,7 @@ L$54:
     and         bl,7
     shl         bx,1
     push        word [_ea_regs+10H+bx]
-    jmp         near L$47
+    jmp         L$47
 L$55:
     lea         ax,[-3aH+bp]
     push        ax
@@ -1547,8 +1547,8 @@ L$56:
     mov         dx,2
 L$57:
     mov         ax,word [-6+bp]
-    call        near dec_modrm_
-    jmp         near L$41
+    call        dec_modrm_
+    jmp         L$41
 L$58:
     lea         ax,[-3aH+bp]
     push        ax
@@ -1568,7 +1568,7 @@ L$59:
     and         bl,7
     shl         bx,1
     push        word [_seg_regs+bx]
-    jmp         near L$47
+    jmp         L$47
 L$60:
     mov         al,byte [-2+bp]
     mov         cl,3
@@ -1578,7 +1578,7 @@ L$60:
     and         bl,7
     shl         bx,1
     push        word [_cntrl_regs+bx]
-    jmp         near L$47
+    jmp         L$47
 L$61:
     mov         al,byte [-2+bp]
     mov         cl,3
@@ -1588,7 +1588,7 @@ L$61:
     and         bl,7
     shl         bx,1
     push        word [_debug_regs+bx]
-    jmp         near L$47
+    jmp         L$47
 L$62:
     mov         bx,word [-0aH+bp]
     mov         al,byte [bx]
@@ -1598,7 +1598,7 @@ L$62:
     push        ax
     add         di,word [-3cH+bp]
     push        di
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
 L$63:
     mov         cx,word [-18H+bp]
@@ -1638,7 +1638,7 @@ dec_modrm_:
     push        ax
     lea         ax,[-22H+bp]
     push        ax
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
     cmp         dl,3
     jne         L$67
@@ -1654,9 +1654,9 @@ L$65:
 L$66:
     push        ax
     push        word[ 0cH+bp]
-    call        near esprintf_
+    call        esprintf_
     add         sp,6
-    jmp         strict near L$71
+    jmp         L$71
 L$67:
     test        dl,dl
     jne         L$69
@@ -1666,12 +1666,12 @@ L$67:
     mov         bx,word[ 8+bp]
     lea         dx,[-2+bp]
     mov         ax,si
-    call        near get_byte_
+    call        get_byte_
     mov         cx,di
     mov         bx,word[ 8+bp]
     lea         dx,[-1+bp]
     mov         ax,si
-    call        near get_byte_
+    call        get_byte_
     push        word [-2+bp]
     mov         ax,L$467
     jmp         L$66
@@ -1687,18 +1687,18 @@ L$69:
     lea         dx,[-2+bp]
 L$70:
     mov         ax,si
-    call        near get_byte_
+    call        get_byte_
     push        word [-2+bp]
     lea         ax,[-22H+bp]
     push        ax
     mov         ax,L$468
     push        ax
     push        word[ 0cH+bp]
-    call        near esprintf_
+    call        esprintf_
     add         sp,8
 L$71:
     xor         ax,ax
-    jmp         strict near L$74
+    jmp         L$74
 L$72:
     cmp         dl,2
     jne         L$73
@@ -1706,7 +1706,7 @@ L$72:
     mov         bx,word[ 8+bp]
     lea         dx,[-2+bp]
     mov         ax,si
-    call        near get_byte_
+    call        get_byte_
     mov         cx,di
     mov         bx,word[ 8+bp]
     lea         dx,[-1+bp]
@@ -1762,7 +1762,7 @@ L$77:
     cmp         ax,bx
     jl          L$78
     xor         bx,bx
-    jmp         strict near L$79
+    jmp         L$79
 L$78:
     sub         bx,ax
 L$79:
@@ -1777,7 +1777,7 @@ L$81:
     jle         L$82
     mov         dx,word [-2+bp]
     mov         ax,word [-4+bp]
-    call        near printchar_
+    call        printchar_
     inc         cx
     dec         bx
     jmp         L$81
@@ -1788,7 +1788,7 @@ L$82:
     xor         ah,ah
     mov         dx,ax
     mov         ax,word [-4+bp]
-    call        near printchar_
+    call        printchar_
     inc         cx
     inc         si
     jmp         L$82
@@ -1797,13 +1797,13 @@ L$83:
     jle         L$84
     mov         dx,word [-2+bp]
     mov         ax,word [-4+bp]
-    call        near printchar_
+    call        printchar_
     inc         cx
     dec         bx
     jmp         L$83
 L$84:
     mov         ax,cx
-    jmp         near L$2
+    jmp         L$2
 printi_:
     push        si
     push        di
@@ -1821,8 +1821,8 @@ printi_:
     mov         cx,word[ 0aH+bp]
     mov         bx,word[ 8+bp]
     lea         dx,[-12H+bp]
-    call        near prints_
-    jmp         near L$74
+    call        prints_
+    jmp         L$74
 L$85:
     test        cx,cx
     je          L$86
@@ -1865,10 +1865,10 @@ L$89:
     je          L$90
     mov         dx,2dH
     mov         ax,di
-    call        near printchar_
+    call        printchar_
     inc         word [-2+bp]
     dec         word[ 8+bp]
-    jmp         strict near L$91
+    jmp         L$91
 L$90:
     dec         si
     mov         byte [si],2dH
@@ -1877,9 +1877,9 @@ L$91:
     mov         bx,word[ 8+bp]
     mov         dx,si
     mov         ax,di
-    call        near prints_
+    call        prints_
     add         ax,word [-2+bp]
-    jmp         near L$74
+    jmp         L$74
 print_:
     push        cx
     push        si
@@ -1939,19 +1939,19 @@ L$95:
     test        ax,ax
     je          L$98
     mov         dx,ax
-    jmp         strict near L$99
+    jmp         L$99
 L$96:
-    jmp         near L$111
+    jmp         L$111
 L$97:
-    jmp         near L$109
+    jmp         L$109
 L$98:
     mov         dx,L$469
 L$99:
     mov         ax,word [-6+bp]
-    call        near prints_
+    call        prints_
 L$100:
     add         word [-2+bp],ax
-    jmp         strict near L$110
+    jmp         L$110
 L$101:
     cmp         byte [si],64H
     jne         L$104
@@ -1967,7 +1967,7 @@ L$102:
     mov         bx,0aH
 L$103:
     mov         ax,word [-6+bp]
-    call        near printi_
+    call        printi_
     jmp         L$100
 L$104:
     cmp         byte [si],78H
@@ -2010,16 +2010,16 @@ L$108:
     mov         byte [-3+bp],0
     mov         bx,dx
     lea         dx,[-4+bp]
-    jmp         near L$99
+    jmp         L$99
 L$109:
     mov         dl,byte [si]
     xor         dh,dh
     mov         ax,word [-6+bp]
-    call        near printchar_
+    call        printchar_
     inc         word [-2+bp]
 L$110:
     inc         si
-    jmp         near L$92
+    jmp         L$92
 L$111:
     cmp         word [-6+bp],0
     je          L$112
@@ -2029,7 +2029,7 @@ L$111:
 L$112:
     mov         word [di],0
     mov         ax,word [-2+bp]
-    jmp         near L$64
+    jmp         L$64
 esprintf_:
     push        bx
     push        dx
@@ -2041,7 +2041,7 @@ esprintf_:
     lea         bx,[-2+bp]
     mov         dx,word[ 0aH+bp]
     lea         ax,[8+bp]
-    call        near print_
+    call        print_
     mov         sp,bp
     pop         bp
     pop         dx
@@ -2360,7 +2360,7 @@ NEXTUREG:   MOV     AX,[SS:DI]                  ; Get register
             TEST    AX,0100h                    ; Check If Trace flag set then
             JZ      CONTBPC                     ; No, check which bp triggered it
                         
-            JMP     strict near EXITINT3	; Exit, Display regs, Cmd prompt
+            JMP     EXITINT3	; Exit, Display regs, Cmd prompt
             
 CONTBPC:    DEC     word [UIP]                       ; No, IP-1 and save
                                  
@@ -2414,7 +2414,7 @@ INT10:      CMP     AH,0Eh
             JNE     ISR10_X
 
             CALL    TXCHAR                      ; Transmit character
-            JMP     strict near ISR10_RET
+            JMP     ISR10_RET
             
 ;----------------------------------------------------------------------                                         
 ; Service Unkown service, display message int and ah value, return to monitor 
@@ -2443,7 +2443,7 @@ ISR16_00:   CMP     AH,00h
             CALL    RXCHAR
             XOR     AH,AH
             
-            JMP     strict near ISR16_RET
+            JMP     ISR16_RET
 
 ;----------------------------------------------------------------------
 ; Interrupt 16H, I/O function                                           
@@ -2475,7 +2475,7 @@ ISR16_01:   CMP     AH,01h
             IN      AL,DX                       ; return result in al
 
             AND     WORD [BP+8],0FFBFh       ; Clear ZF in stack stored flag
-            JMP     strict near ISR16_RET
+            JMP     ISR16_RET
                     
 ;----------------------------------------------------------------------                                          
 ; Service Unkown service, display message int and ah value, return to monitor 
@@ -2551,7 +2551,7 @@ ISR1A_00:   CMP     AH,00h
             MOV     CX,word [TEMP1]
             MOV     DX,word [TEMP2]
             
-            JMP     strict near ISR1A_RET	; exit
+            JMP     ISR1A_RET	; exit
 
 TEMP1       DW      0
 TEMP2       DW      0                           
@@ -2609,7 +2609,7 @@ ISR1A_01W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             POP     DX
             POP     CX
             POP     BX
-            JMP     strict near ISR1A_RET	; exit
+            JMP     ISR1A_RET	; exit
             
             
 ;----------------------------------------------------------------------
@@ -2626,7 +2626,7 @@ ISR1A_02:   CMP     AH,02h
             JNE     ISR1A_03
             
             CALL    READRTC
-            JMP     strict near ISR1A_RET	; exit
+            JMP     ISR1A_RET	; exit
 
 READRTC:    MOV     AL,00h                      ; Seconds
             OUT     RTC_BASE,AL
@@ -2682,7 +2682,7 @@ ISR1A_03W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             MOV     AL,CH
             OUT     RTC_DATA,AL
             
-            JMP     strict near ISR1A_RET
+            JMP     ISR1A_RET
             
 ;----------------------------------------------------------------------
 ; Int 1Ah function 04h - Get RTC date
@@ -2715,7 +2715,7 @@ ISR1A_04:   CMP     AH,04h
             MOV     CL,AL
             MOV     CH,20h          
             
-            JMP     strict near ISR1A_RET
+            JMP     ISR1A_RET
 
 ;----------------------------------------------------------------------
 ; Int 1Ah function 05h - Set RTC date
@@ -2750,7 +2750,7 @@ ISR1A_05W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             MOV     AL,CL
             OUT     RTC_DATA,AL
             
-            JMP     strict near ISR1A_RET
+            JMP     ISR1A_RET
             
 ;----------------------------------------------------------------------
 ; Interrupt 1Ah                                           
@@ -2786,7 +2786,7 @@ ISR21_1:    CMP     AH,01
             JNE     ISR21_2                         
 
             CALL    RXCHAR                      ; Return result in AL
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2801,7 +2801,7 @@ ISR21_2:    CMP     AH,02
             MOV     AL,DL
             CALL    TXCHAR
         
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2814,7 +2814,7 @@ ISR21_8:    CMP     AH,08
             JNE     ISR21_9                         
 
             CALL    RXCHAR                      ; Return result in AL
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2829,7 +2829,7 @@ ISR21_9:    CMP     AH,09
             MOV     SI,DX
             CALL    PUTS                        ; Display string DS[SI]
                 
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2856,7 +2856,7 @@ ISR21_25:   CMP     AH,25h
             MOV     [ES:SI],DS                  ; Set segment
 
 
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2888,7 +2888,7 @@ ISR21_0B:   CMP     AH,0Bh
             ;AND     AL,RX_AVAIL
             AND     AL,DR
 
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2905,7 +2905,7 @@ ISR21_2C:   CMP     AH,02Ch
 ;            INT        1Ah                         
 ;            XOR        DL,DL                       ; Ignore 1/100 seconds value
             CALL    READRTC                     ; Get System Time
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2915,7 +2915,7 @@ ISR21_30:   CMP     AH,030h
             JNE     ISR21_3D 
             
             MOV     AL,02                       ; DOS=2.0
-            JMP     strict near ISR21_RET	; return to caller
+            JMP     ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2925,7 +2925,7 @@ ISR21_30:   CMP     AH,030h
 ISR21_3D:   CMP     AH,03DH
             JNE     ISR21_40
 
-            JMP     strict near ISR21_RET	; Just return
+            JMP     ISR21_RET	; Just return
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2942,7 +2942,7 @@ NEXT40W:    LODSB                               ; AL=DS:[SI++]
             CALL    TXCHAR                      ; Write to UART
             LOOP    NEXT40W                     
                       
-            JMP     strict near ISR21_RET
+            JMP     ISR21_RET
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2952,7 +2952,7 @@ NEXT40W:    LODSB                               ; AL=DS:[SI++]
 ISR21_4A:   CMP     AH,04AH
             JNE     ISR21_4C
 
-            JMP     strict near ISR21_RET	; Just return
+            JMP     ISR21_RET	; Just return
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
