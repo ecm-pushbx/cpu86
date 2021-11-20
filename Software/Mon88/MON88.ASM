@@ -213,6 +213,7 @@ NEXTINTS:   MOV     WORD [ES:BX], INTX          ; Spurious Interrupt Handler
             MOV     word [ES:88], INT16		; INT16h  
             MOV     word [ES:104], INT1A	; INT1A, Timer functions  
             MOV     word [ES:132], INT21	; INT21h  
+            mov word [es:19h * 4], int19
 
 
 ;----------------------------------------------------------------------
@@ -2998,6 +2999,15 @@ ISR21_RET:  POP     SI
             POP     DS
             IRET
 
+
+int19:
+	push cs
+	pop ds
+	mov si, msgint19
+	call PUTS
+	jmp INITMON
+
+
 ;----------------------------------------------------------------------
 ; Unknown Service Handler
 ; Display Message, interrupt and service number before jumping back to the monitor
@@ -4562,6 +4572,7 @@ LD_REC_MESS     DB  CR,LF,"Error: Unknown Record Type",CR,LF,0
 LD_HEX_MESS     DB  CR,LF,"Error: Non Hex value received",CR,LF,0
 LD_OK_MESS      DB  CR,LF,"Load done",CR,LF,0
 TERM_MESS       DB  CR,LF,"Program Terminated with exit code ",0
+msgint19:	db 13,10,"Program terminated with int19.",0
 
 ; Mess+18=? character, change by bp number
 BREAKP_MESS     DB  CR,LF,"**** BREAKPOINT ? ****",CR,LF,0
