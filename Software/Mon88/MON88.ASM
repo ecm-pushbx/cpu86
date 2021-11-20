@@ -144,9 +144,8 @@ INITMON:    CLI
             MOV     AX,CS                       ; Cold entry point
             MOV     DS,AX                       ; 
 
-            MOV     SS,AX
-            MOV     AX, TOS                     ; Top of Stack
-            MOV     SP,AX                       ; Set Stack pointer
+            MOV     SS, AX
+            MOV     SP, TOS			; Set Stack pointer to Top of Stack
 
 ;----------------------------------------------------------------------
 ; Set baudrate for 16550
@@ -2404,10 +2403,9 @@ INT3RESBP:  ADD     BX,4                        ; Next entry
             CALL    PUTS                        ; Write BP Number message                 
                        
 EXITINT3:   MOV     AX,CS                       ; Restore Monitor settings
-            MOV     SS,AX
 ;            MOV     DS,AX
-            MOV     AX,TOS               ; Top of Stack
-            MOV     SP,AX                       ; Restore Monitor Stack pointer
+            MOV     SS,AX
+            MOV     SP, TOS			; Restore Monitor Stack pointer
             MOV     AX,BASE_SEGMENT             ; Restore Base Pointer
             MOV     ES,AX
             
