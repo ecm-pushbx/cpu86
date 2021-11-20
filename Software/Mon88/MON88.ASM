@@ -4559,8 +4559,9 @@ _inpfp:
 ;----------------------------------------------------------------------
 ; Text Strings
 ;----------------------------------------------------------------------
-WELCOME_MESS    DB  CR,LF,LF,"MON88 8088/8086 Monitor ver 0.12"
-                DB  CR,LF,"Copyright WWW.HT-LAB.COM 2005-2008",
+WELCOME_MESS    DB  CR,LF,CR,LF,"MON88 8088/8086 Monitor ver 0.12"
+                DB  CR,LF,"Copyright WWW.HT-LAB.COM 2005-2008"
+		db 13,10,"Modified by C. Masloch, 2021"
                 DB  CR,LF,"All rights reserved.",CR,LF,0
 PROMPT_MESS     DB  CR,LF,"Cmd>",0
 ERRCMD_MESS     DB  " <- Unknown Command, type H to Display Help",0
