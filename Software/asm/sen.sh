@@ -19,4 +19,17 @@ shift
 nasm "$source" -f ith -o output.hex "$@"
 (($?)) && exit $?
 
+# :02 0000 02 0000 FC
+# 02: length
+# 0000: address
+# 02: EAD
+# 0000: CS
+# FC: checksum
 (echo "l:020000020000FC"; cat output.hex) | sed -re 's/:00000001FF/:0400000300000100F8/g' | tr -d '\n' | ./s1.pl $s1opt -
+# :04 0000 03 00 00 01 00 F8
+# 04: length
+# 0000: address
+# 03: SSA
+# 0000: CS
+# 0100: IP
+# F8: checksum
