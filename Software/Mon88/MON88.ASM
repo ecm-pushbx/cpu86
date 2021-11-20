@@ -6,7 +6,7 @@
 ; - Some bios calls
 ; - Disassembler based on David Moore's "disasm.c - x86 Disassembler v 0.1"
 ; - Requires roughly 14K, default segment registers set to 0380h
-; - Assembled using A86 assembler
+; - Assembled using A86 assembler (ported to NASM by ecm)
 ;
 ;----------------------------------------------------------------------
 ;
@@ -118,24 +118,26 @@ RTC_DATA    EQU     0071h
 BASE_SEGMENT    EQU  0380h  
 
 
-WRSPACE  MACRO                                  ; Write space character
+%macro WRSPACE 0                                ; Write space character
     MOV     AL,' '
     CALL    TXCHAR
-#EM
+%endmacro
 
-WREQUAL  MACRO                                  ; Write = character
+%macro WREQUAL 0                                ; Write = character
     MOV     AL,'='
     CALL    TXCHAR
-#EM
+%endmacro
 
-            ORG     0400h                       ; First 1024 bytes used for int vectors
+		org 100h
+		times 300h nop
+            ; ORG     0400h                     ; First 1024 bytes used for int vectors
 
 INITMON:    CLI
             MOV     AX,CS                       ; Cold entry point
             MOV     DS,AX                       ; 
 
             MOV     SS,AX
-            MOV     AX,OFFSET TOS               ; Top of Stack
+            MOV     AX, TOS                     ; Top of Stack
             MOV     SP,AX                       ; Set Stack pointer
 
 ;----------------------------------------------------------------------
@@ -191,25 +193,25 @@ INITCOM:    MOV     AL,080h                     ; Init 16550, DLAB=1
 
                                                 ; Point all vectors to unknown handler!
             XOR     BX,BX                       ; 256 vectors * 4 bytes
-NEXTINTS:   MOV     WORD ES:[BX], OFFSET INTX   ; Spurious Interrupt Handler
-            MOV     WORD ES:[BX+2], 0
+NEXTINTS:   MOV     WORD [ES:BX], INTX          ; Spurious Interrupt Handler
+            MOV     WORD [ES:BX+2], 0
             ADD     BX,4
             CMP     BX,0400h
             JNE     NEXTINTS                  
                          
-            MOV     ES:[WORD 04], OFFSET INT1_3 ; INT1 Single Step handler
-            MOV     ES:[WORD 12], OFFSET INT1_3 ; INT3 Breakpoint handler
-            MOV     ES:[WORD 64], OFFSET INT10  ; INT10h  
-            MOV     ES:[WORD 88], OFFSET INT16  ; INT16h  
-            MOV     ES:[WORD 104],OFFSET INT1A  ; INT1A, Timer functions  
-            MOV     ES:[WORD 132],OFFSET INT21  ; INT21h  
+            MOV     word [ES:04], INT1_3	; INT1 Single Step handler
+            MOV     word [ES:12], INT1_3	; INT3 Breakpoint handler
+            MOV     word [ES:64], INT10		; INT10h  
+            MOV     word [ES:88], INT16		; INT16h  
+            MOV     word [ES:104], INT1A	; INT1A, Timer functions  
+            MOV     word [ES:132], INT21	; INT21h  
 
 
 ;----------------------------------------------------------------------
 ; Entry point, Display welcome message  
 ;----------------------------------------------------------------------
 START:      CLD
-            MOV     SI,OFFSET WELCOME_MESS      ; OFFSET -> SI
+            MOV     SI,WELCOME_MESS      ; -> SI
             CALL    PUTS                        ; String pointed to by DS:[SI]
 
             MOV     AX,BASE_SEGMENT             ; Get Default Base segment
@@ -218,14 +220,14 @@ START:      CLD
 ;----------------------------------------------------------------------
 ; Process commands  
 ;----------------------------------------------------------------------
-CMD:        MOV     SI,OFFSET PROMPT_MESS       ; Display prompt >
+CMD:        MOV     SI,PROMPT_MESS       ; Display prompt >
             CALL    PUTS
                 
             CALL    RXCHAR                      ; Get Command First Byte
             CALL    TO_UPPER
             MOV     DH,AL
 
-            MOV     BX,OFFSET CMDTAB1           ; Single Command?
+            MOV     BX,CMDTAB1           ; Single Command?
 CMPCMD1:    MOV     AL,[BX]
             CMP     AL,DH
             JNE     NEXTCMD1
@@ -233,14 +235,14 @@ CMPCMD1:    MOV     AL,[BX]
             JMP     [BX+2]                      ; Execute Command
             
 NEXTCMD1:   ADD     BX,4
-            CMP     BX,OFFSET ENDTAB1
+            CMP     BX,ENDTAB1
             JNE     CMPCMD1                     ; Continue looking
 
             CALL    RXCHAR                      ; Get Second Command Byte, DX=command
             CALL    TO_UPPER
             MOV     DL,AL
 
-            MOV     BX,OFFSET CMDTAB2
+            MOV     BX,CMDTAB2
 CMPCMD2:    MOV     AX,[BX]
             CMP     AX,DX
             JNE     NEXTCMD2
@@ -248,10 +250,10 @@ CMPCMD2:    MOV     AX,[BX]
             JMP     [BX+2]                      ; Execute Command
             
 NEXTCMD2:   ADD     BX,4
-            CMP     BX,OFFSET ENDTAB2
+            CMP     BX,ENDTAB2
             JNE     CMPCMD2                     ; Continue looking
             
-            MOV     SI,OFFSET ERRCMD_MESS       ; Display Unknown Command, followed by usage message
+            MOV     SI,ERRCMD_MESS       ; Display Unknown Command, followed by usage message
             CALL    PUTS                        
             JMP     CMD                         ; Try again 
 
@@ -267,25 +269,25 @@ CMDTAB1     DW      'L',LOADHEX                 ; Single char Command Jump Table
             DW      CR ,CMD
 ENDTAB1     DW      ' '
 
-CMDTAB2     DW      'FM',FILLMEM                ; Double char Command Jump Table
-            DW      'DM',DUMPMEM            
-            DW      'BP',SETBREAKP              ; Set Breakpoint
-            DW      'CB',CLRBREAKP              ; Clear Breakpoint
-            DW      'DB',DISPBREAKP             ; Display Breakpoint
-            DW      'CR',CHANGEREG              ; Change Register
-            DW      'OB',OUTPORTB           
-            DW      'BS',CHANGEBS               ; Change Base Segment Address
-            DW      'OW',OUTPORTW
-            DW      'IB',INPORTB
-            DW      'IW',INPORTW
-            DW      'WB',WRMEMB                 ; Write Byte to Memory
+CMDTAB2     DW      'MF',FILLMEM                ; Double char Command Jump Table
+            DW      'MD',DUMPMEM            
+            DW      'PB',SETBREAKP              ; Set Breakpoint
+            DW      'BC',CLRBREAKP              ; Clear Breakpoint
+            DW      'BD',DISPBREAKP             ; Display Breakpoint
+            DW      'RC',CHANGEREG              ; Change Register
+            DW      'BO',OUTPORTB           
+            DW      'SB',CHANGEBS               ; Change Base Segment Address
+            DW      'WO',OUTPORTW
+            DW      'BI',INPORTB
+            DW      'WI',INPORTW
+            DW      'BW',WRMEMB                 ; Write Byte to Memory
             DW      'WW',WRMEMW                 ; Write Word to Memory
 ENDTAB2     DW      '??'
 
 ;----------------------------------------------------------------------
 ; Set Breakpoint
 ;----------------------------------------------------------------------
-SETBREAKP:  MOV     BX,OFFSET BPTAB             ; BX point to Breakpoint table
+SETBREAKP:  MOV     BX,BPTAB             ; BX point to Breakpoint table
             CALL    GETHEX1                     ; Set Breakpoint, first get BP number
             AND     AL,07h                      ; Allow 8 breakpoints
             XOR     AH,AH
@@ -298,15 +300,15 @@ SETBREAKP:  MOV     BX,OFFSET BPTAB             ; BX point to Breakpoint table
             MOV     [BX],AX                     ; Save Address
 
             MOV     DI,AX
-            MOV     AL,ES:[DI]                  ; Get the opcode
+            MOV     AL,[ES:DI]                  ; Get the opcode
             MOV     [BX+2],AL                   ; Store in table
                         
-            JMP     DISPBREAKP                  ; Display Enabled Breakpoints  
+            JMP     strict near DISPBREAKP	; Display Enabled Breakpoints  
 
 ;----------------------------------------------------------------------
 ; Clear Breakpoint
 ;----------------------------------------------------------------------
-CLRBREAKP:  MOV     BX,OFFSET BPTAB             ; BX point to Breakpoint table
+CLRBREAKP:  MOV     BX,BPTAB             ; BX point to Breakpoint table
             CALL    GETHEX1                     ; first get BP number
             AND     AL,07h                      ; Only allow 8 breakpoints
             XOR     AH,AH
@@ -315,7 +317,7 @@ CLRBREAKP:  MOV     BX,OFFSET BPTAB             ; BX point to Breakpoint table
             ADD     BX,AX                       ; point to table entry 
             MOV     BYTE [BX+3],0               ; Clear Breakpoint
                                     
-            JMP     DISPBREAKP                  ; Display Remaining Breakpoints
+            JMP     strict near DISPBREAKP	; Display Remaining Breakpoints
 
 ;----------------------------------------------------------------------
 ; Display all enabled Breakpoints
@@ -323,7 +325,7 @@ CLRBREAKP:  MOV     BX,OFFSET BPTAB             ; BX point to Breakpoint table
 ; 0 1234
 ;----------------------------------------------------------------------
 DISPBREAKP: CALL    NEWLINE
-            MOV     BX,OFFSET BPTAB
+            MOV     BX,BPTAB
             MOV     CX,8
 
 NEXTCBP:    MOV     AX,8
@@ -349,14 +351,7 @@ NEXTDBP:    ADD     BX,4                        ; Next entry
 ;----------------------------------------------------------------------
 ; Breakpoint Table, Address(2), Opcode(1), flag(1) enable=1, disable=0
 ;----------------------------------------------------------------------
-BPTAB       DB      4 DUP 0                     
-            DB      4 DUP 0
-            DB      4 DUP 0
-            DB      4 DUP 0
-            DB      4 DUP 0
-            DB      4 DUP 0
-            DB      4 DUP 0
-            DB      4 DUP 0
+BPTAB       times 8 dd 0
 
 ;----------------------------------------------------------------------
 ; Disassemble Range
@@ -369,20 +364,20 @@ LOOPDIS1:   PUSH    DX
             MOV     AX,BX                       ; Address in AX
             CALL    PUTHEX4                     ; Display it
 
-            LEA     BX,DISASM_CODE              ; Pointer to code storage
-            LEA     DX,DISASM_INST              ; Pointer to instr string
+            mov     BX,DISASM_CODE              ; Pointer to code storage
+            mov     DX,DISASM_INST              ; Pointer to instr string
             CALL    disasm_                     ; Disassemble Opcode
             MOV     BX,AX                       ; 
 
             PUSH    AX                          ; New address returned in AX
             WRSPACE
-            MOV     SI,offset DISASM_CODE
+            MOV     SI,DISASM_CODE
             CALL    PUTS
             CALL    STRLEN                      ; String in SI, Length in AL
             MOV     AH,15
             SUB     AH,AL
             CALL    WRNSPACE                    ; Write AH spaces
-            MOV     SI,offset DISASM_INST
+            MOV     SI,DISASM_INST
             CALL    PUTS
             CALL    NEWLINE
             POP     AX
@@ -405,18 +400,18 @@ DISASM_AX:  PUSH    ES                          ; Disassemble Instruction
 
             MOV     AX,[UCS]                    ; Get Code Base segment
             MOV     ES,AX                       ;
-            LEA     BX,DISASM_CODE              ; Pointer to code storage
-            LEA     DX,DISASM_INST              ; Pointer to instr string
+            mov     BX,DISASM_CODE              ; Pointer to code storage
+            mov     DX,DISASM_INST              ; Pointer to instr string
             POP     AX                          ; Address in AX
             CALL    disasm_                     ; Disassemble Opcode
 
-            MOV     SI,offset DISASM_CODE
+            MOV     SI,DISASM_CODE
             CALL    PUTS
             CALL    STRLEN                      ; String in SI, Length in AL
             MOV     AH,15
             SUB     AH,AL
             CALL    WRNSPACE                    ; Write AH spaces
-            MOV     SI,offset DISASM_INST
+            MOV     SI,DISASM_INST
             CALL    PUTS
 
             POP     BX
@@ -432,11 +427,11 @@ WRMEMB:     CALL    GETHEX4                     ; Get Address
             MOV     BX,AX                       ; Store Address
             WRSPACE            
             
-            MOV     AL,ES:[BX]                  ; Get current value and display it
+            MOV     AL,[ES:BX]                  ; Get current value and display it
             CALL    PUTHEX2
             WREQUAL
             CALL    GETHEX2                     ; Get new value
-            MOV     ES:[BX],AL                  ; and write it
+            MOV     [ES:BX],AL                  ; and write it
              
             JMP     CMD                         ; Next Command
 
@@ -447,11 +442,11 @@ WRMEMW:     CALL    GETHEX4                     ; Get Address
             MOV     BX,AX
             WRSPACE 
 
-            MOV     AX,ES:[BX]                  ; Get current value and display it
+            MOV     AX,[ES:BX]                  ; Get current value and display it
             CALL    PUTHEX4
             WREQUAL
             CALL    GETHEX4                     ; Get new value
-            MOV     ES:[BX],AX                  ; and write it
+            MOV     [ES:BX],AX                  ; and write it
             
             JMP     CMD                         ; Next Command  
 
@@ -466,7 +461,7 @@ CHANGEREG:  CALL    RXCHAR                      ; Get Command First Register cha
             CALL    TO_UPPER
             MOV     DL,AL
 
-            MOV     BX,OFFSET REGTAB
+            MOV     BX,REGTAB
 CMPREG:     MOV     AX,[BX]
             CMP     AX,DX                       ; Compare register string with user input
             JNE     NEXTREG                     ; No, continue search
@@ -475,35 +470,35 @@ CMPREG:     MOV     AX,[BX]
             CALL    GETHEX4                     ; Get new value
             MOV     CX,AX                       ; CX=New reg value
 
-            LEA     DI,UAX                      ; Point to User Register Storage            
+            mov     DI,UAX                      ; Point to User Register Storage            
             MOV     BL,[BX+2]                   ; Get Offset
             XOR     BH,BH
             MOV     [DI+BX],CX
             JMP     DISPREG                     ; Display All registers
 
 NEXTREG:    ADD     BX,4
-            CMP     BX,OFFSET ENDREG
+            CMP     BX,ENDREG
             JNE     CMPREG                      ; Continue looking
             
-            MOV     SI,OFFSET ERRREG_MESS       ; Display Unknown Register Name
+            MOV     SI,ERRREG_MESS       ; Display Unknown Register Name
             CALL    PUTS                        
 
             JMP     CMD                         ; Try Again 
 
-REGTAB      DW      'AX',0                      ; register name, offset
-            DW      'BX',2                  
-            DW      'CX',4                  
-            DW      'DX',6                  
-            DW      'SP',8                  
-            DW      'BP',10                 
-            DW      'SI',12                 
-            DW      'DI',14                 
-            DW      'DS',16                 
-            DW      'ES',18                 
+REGTAB      DW      'XA',0                      ; register name, offset
+            DW      'XB',2                  
+            DW      'XC',4                  
+            DW      'XD',6                  
+            DW      'PS',8                  
+            DW      'PB',10                 
+            DW      'IS',12                 
+            DW      'ID',14                 
+            DW      'SD',16                 
+            DW      'SE',18                 
             DW      'SS',20                 
-            DW      'CS',22                 
-            DW      'IP',24                 
-            DW      'FL',26                 
+            DW      'SC',22                 
+            DW      'PI',24                 
+            DW      'LF',26                 
 ENDREG      DW      '??'
 
 
@@ -527,7 +522,7 @@ CHANGEBS:   MOV     AX,ES                       ; WORD BASE_SEGMENT
 TRACENEXT:  MOV     AX,[UFL]                    ; Get User flags
             OR      AX,0100h                    ; set TF
             MOV     [UFL],AX
-            JMP     TRACNENTRY
+            JMP     strict near TRACNENTRY
                        
 ;----------------------------------------------------------------------
 ; Trace Program from Address
@@ -535,7 +530,7 @@ TRACENEXT:  MOV     AX,[UFL]                    ; Get User flags
 TRACEPROG:  MOV     AX,[UFL]                    ; Get User flags
             OR      AX,0100h                    ; set TF
             MOV     [UFL],AX
-            JMP     TRACENTRY                   ; get execute address, save user registers etc
+            JMP     strict near TRACENTRY	; get execute address, save user registers etc
                         
 ;----------------------------------------------------------------------
 ; Execute program
@@ -543,7 +538,7 @@ TRACEPROG:  MOV     AX,[UFL]                    ; Get User flags
 ; 2) Restore User registers
 ; 3) Jump to BASE_SEGMENT:USER_OFFSET
 ;----------------------------------------------------------------------
-EXECPROG:   MOV     BX,OFFSET BPTAB             ; Enable All breakpoints
+EXECPROG:   MOV     BX,BPTAB             ; Enable All breakpoints
             MOV     CX,8
 
 NEXTENBP:   MOV     AX,8
@@ -551,7 +546,7 @@ NEXTENBP:   MOV     AX,8
             TEST    BYTE [BX+3],1               ; Check enable/disable flag
             JZ      NEXTEXBP
             MOV     DI,[BX]                     ; Get Breakpoint Address
-            MOV     BYTE ES:[DI],0CCh           ; Write INT3 instruction to address
+            MOV     BYTE [ES:DI],0CCh           ; Write INT3 instruction to address
 
 NEXTEXBP:   ADD     BX,4                        ; Next entry
             LOOP    NEXTENBP
@@ -590,9 +585,9 @@ TRACNENTRY: MOV     AX,[UAX]                    ; Restore User Registers
             MOV     SS,[USS]                         
             MOV     SP,[USP]
             
-            PUSH    [UFL]
-            PUSH    [UCS]                       ; Push CS (Base Segment) 
-            PUSH    [UIP]       
+            PUSH    word [UFL]
+            PUSH    word [UCS]                       ; Push CS (Base Segment) 
+            PUSH    word [UIP]       
             MOV     DS,[UDS]
             IRET                                ; Execute!
 
@@ -640,7 +635,7 @@ INPORTW:    CALL    GETHEX4                     ; Get Port address
 ; Display Memory    
 ;----------------------------------------------------------------------
 DUMPMEM:    CALL    GETRANGE                    ; Range from BX to DX
-NEXTDMP:    MOV     SI,OFFSET DUMPMEMS          ; Store ASCII values
+NEXTDMP:    MOV     SI,DUMPMEMS          ; Store ASCII values
 
             CALL    NEWLINE
             MOV     AX,ES
@@ -663,8 +658,8 @@ NEXTDMP:    MOV     SI,OFFSET DUMPMEMS          ; Store ASCII values
 DISPBYTE:   MOV     CX,16
             SUB     CL,AH
                 
-LOOPDMP1:   MOV     AL,ES:[BX]                  ; Get Byte and display it in HEX
-            MOV     DS:[SI],AL                  ; Save it
+LOOPDMP1:   MOV     AL,[ES:BX]                  ; Get Byte and display it in HEX
+            MOV     [SI],AL                  ; Save it
             CALL    PUTHEX2
             WRSPACE                             ; Write Space
             INC     BX
@@ -678,10 +673,10 @@ LOOPDMP1:   MOV     AL,ES:[BX]                  ; Get Byte and display it in HEX
             CMP     DX,BX                       ; End of memory range?
             JNC     NEXTDMP                     ; No, continue with next 16 bytes
 
-SHOWREM:    MOV     SI,OFFSET DUMPMEMS          ; Stored ASCII values
+SHOWREM:    MOV     SI,DUMPMEMS          ; Stored ASCII values
             MOV     AX,BX
             AND     AX,0000Fh
-            TEST    AL
+            TEST    AL, al
             JZ      SKIPCLR
             ADD     SI,AX                       ; Offset
             MOV     AH,16
@@ -689,7 +684,7 @@ SHOWREM:    MOV     SI,OFFSET DUMPMEMS          ; Stored ASCII values
             MOV     CL,AH
             XOR     CH,CH
             MOV     AL,' '                      ; Clear non displayed values
-NEXTCLR:    MOV     DS:[SI],AL                  ; Save it
+NEXTCLR:    MOV     [SI],AL                  ; Save it
             INC     SI
             LOOP    NEXTCLR
             CALL    WRNSPACE                    ; Write AH spaces
@@ -700,7 +695,7 @@ SKIPCLR:    XOR     AH,AH
 
 EXITDMP:    JMP     CMD                         ; Next Command
 
-PUTSDMP:    MOV     SI,OFFSET DUMPMEMS          ; Stored ASCII values
+PUTSDMP:    MOV     SI,DUMPMEMS          ; Stored ASCII values
             WRSPACE                             ; Add 2 spaces
             WRSPACE
             CALL    WRNSPACE                    ; Write AH spaces
@@ -711,7 +706,7 @@ NEXTCH:     LODSB                               ; Get character AL=DS:[SI++]
             JBE     PRINTDOT
             CMP     AL,07Fh
             JAE     PRINTDOT
-            JMP     PRINTCH
+            JMP     strict near PRINTCH
 PRINTDOT:   MOV     AL,'.'
 PRINTCH:    CALL    TXCHAR                          
             LOOP    NEXTCH                      ; Next Character
@@ -719,7 +714,7 @@ PRINTCH:    CALL    TXCHAR
 
 WRNSPACE:   PUSH    AX                          ; Write AH space, skip if 0 
             PUSH    CX
-            TEST    AH                          
+            TEST    AH, ah
             JZ      EXITWRNP
             XOR     CH,CH                       ; Write AH spaces
             MOV     CL,AH
@@ -743,7 +738,7 @@ FILLMEM:    CALL    GETRANGE                    ; First get range BX to DX
             JB      EXITFILL
 DOFILL:     SUB     DX,BX
             MOV     CX,DX            
-            MOV     DI,BX                       ; ES:[DI]
+            MOV     DI,BX                       ; [ES:DI]
             POP     AX                          ; Restore fill char
 NEXTFILL:   STOSb
             LOOP    NEXTFILL
@@ -757,8 +752,8 @@ EXITFILL:   JMP     CMD                         ; Next Command
 ; DS=0009 ES=000A SS=000B CS=000C IP=0100   ODIT-SZAPC=0000-00000 
 ;----------------------------------------------------------------------
 DISPREG:    CALL    NEWLINE
-            MOV     SI,OFFSET REG_MESS          ; OFFSET -> SI
-            LEA     DI,UAX
+            MOV     SI,REG_MESS          ; -> SI
+            mov     DI,UAX
             
             MOV     CX,8
 NEXTDR1:    CALL    PUTS                        ; Point to first "AX=" string
@@ -777,9 +772,9 @@ NEXTDR2:    CALL    PUTS                        ; Point to first "DS=" string
             ADD     DI,2                        ; Point to ES value
             LOOP    NEXTDR2                     ; etc
 
-            MOV     SI,OFFSET FLAG_MESS
+            MOV     SI,FLAG_MESS
             CALL    PUTS
-            MOV     SI,OFFSET FLAG_VALID        ; String indicating which bits to display
+            MOV     SI,FLAG_VALID        ; String indicating which bits to display
             MOV     BX,[DI]                     ; get flag value in BX
             
             MOV     CX,8                        ; Display first 4 bits
@@ -787,11 +782,11 @@ NEXTBIT1:   LODSB                               ; Get display/notdisplay flag AL
             CMP     AL,'X'                      ; Display?
             JNE     SHFTCAR                     ; Yes, shift bit into carry and display it
             SAL     BX,1                        ; no, ignore bit
-            JMP     EXITDISP1
+            JMP     strict near EXITDISP1
 SHFTCAR:    SAL     BX,1
             JC      DISP1
             MOV     AL,'0'
-            JMP     DISPBIT
+            JMP     strict near DISPBIT
 DISP1:      MOV     AL,'1'
 DISPBIT:    CALL    TXCHAR
 EXITDISP1:  LOOP    NEXTBIT1
@@ -804,11 +799,11 @@ NEXTBIT2:   LODSB                               ; Get display/notdisplay flag AL
             CMP     AL,'X'                      ; Display?
             JNE     SHFTCAR2                    ; Yes, shift bit into carry and display it
             SAL     BX,1                        ; no, ignore bit
-            JMP     EXITDISP2
+            JMP     strict near EXITDISP2
 SHFTCAR2:   SAL     BX,1
             JC      DISP2
             MOV     AL,'0'
-            JMP     DISPBIT2
+            JMP     strict near DISPBIT2
 DISP2:      MOV     AL,'1'
 DISPBIT2:   CALL    TXCHAR
 EXITDISP2:  LOOP    NEXTBIT2
@@ -848,11 +843,11 @@ REG_MESS    DB  "AX=",0,0                       ; Display Register names table
 ; Print '.' for each valid received frame, exit upon error 
 ; Bytes are loaded at Segment=ES
 ;----------------------------------------------------------------------
-LOADHEX:    MOV     SI,OFFSET LOAD_MESS         ; Display Ready to receive upload
+LOADHEX:    MOV     SI,LOAD_MESS         ; Display Ready to receive upload
             CALL    PUTS                        
             
             MOV     AL,'>'
-            JMP     DISPCH
+            JMP     strict near DISPCH
 
 RXBYTE:     XCHG    BH,AH                       ; save AH register
             CALL    RXNIB
@@ -943,7 +938,7 @@ GOENDLD:    CALL    RXBYTE
             ADD     AL,1
             CMP     AL,BL                       ; Checksum held in BL
             JNE     ERROR ;ERRCHKS
-            JMP     LOADOK
+            JMP     strict near LOADOK
 
 GOCHECK:    CALL    RXBYTE
             SUB     BL,AL                       ; Remove checksum from checksum
@@ -965,13 +960,13 @@ GOEAD:      CALL    RXBYTE
             MOV     ES,AX                       ; Set Segment address (ES)
             JMP     GOCHECK
 
-;ERRCHKS:    MOV     SI,OFFSET LD_CHKS_MESS      ; Display Checksum error
-;            JMP     EXITLD                      ; Exit Load Command
-;ERRREC:     MOV     SI,OFFSET LD_REC_MESS       ; Display unknown record type           
-;            JMP     EXITLD                      ; Exit Load Command
-LOADOK:     MOV     SI,OFFSET LD_OK_MESS        ; Display Load OK
-            JMP     EXITLD
-ERRHEX:     MOV     SI,OFFSET LD_HEX_MESS       ; Display Error hex value
+;ERRCHKS:    MOV     SI,LD_CHKS_MESS      ; Display Checksum error
+;            JMP     strict near EXITLD		; Exit Load Command
+;ERRREC:     MOV     SI,LD_REC_MESS       ; Display unknown record type           
+;            JMP     strict near EXITLD		; Exit Load Command
+LOADOK:     MOV     SI,LD_OK_MESS        ; Display Load OK
+            JMP     strict near EXITLD
+ERRHEX:     MOV     SI,LD_HEX_MESS       ; Display Error hex value
 EXITLD:     CALL    PUTS
             JMP     CMD                         ; Exit Load Command
 
@@ -988,28 +983,28 @@ get_byte_:
             mov         bp,sp
             push        ax
             mov         si,ax
-            mov         word ptr -2[bp],dx
+            mov         word [-2+bp],dx
             mov         ax,bx
             mov         bx,cx
-            mov         di,word ptr [si]
-            mov         dl,byte ptr ES:[di]
-            mov         di,word ptr -2[bp]
-            mov         byte ptr [di],dl
-            inc         word ptr [si]
+            mov         di,word [si]
+            mov         dl,byte [ES:di]
+            mov         di,word [-2+bp]
+            mov         byte [di],dl
+            inc         word [si]
             test        ax,ax
             je          L$2
             test        cx,cx
             je          L$2
-            mov         dl,byte ptr [di]
+            mov         dl,byte [di]
             xor         dh,dh
             push        dx
-            mov         dx,offset L$450
+            mov         dx,L$450
             push        dx
-            add         ax,word ptr [bx]
+            add         ax,word [bx]
             push        ax
-            call        near ptr esprintf_
+            call        near esprintf_
             add         sp,6
-            add         word ptr [bx],ax
+            add         word [bx],ax
 L$2:
             mov         sp,bp
             pop         bp
@@ -1024,19 +1019,19 @@ get_bytes_:
     mov         bp,sp
     sub         sp,6
     mov         di,ax
-    mov         word ptr -4[bp],dx
-    mov         word ptr -6[bp],bx
-    mov         word ptr -2[bp],cx
+    mov         word [-4+bp],dx
+    mov         word [-6+bp],bx
+    mov         word [-2+bp],cx
     xor         si,si
 L$3:
-    cmp         si,word ptr 8[bp]
+    cmp         si,word[ 8+bp]
     jge         L$4
-    mov         dx,word ptr -4[bp]
+    mov         dx,word [-4+bp]
     add         dx,si
-    mov         cx,word ptr -2[bp]
-    mov         bx,word ptr -6[bp]
+    mov         cx,word [-2+bp]
+    mov         bx,word [-6+bp]
     mov         ax,di
-    call        near ptr get_byte_
+    call        near get_byte_
     inc         si
     jmp         L$3
 L$4:
@@ -1046,107 +1041,107 @@ L$4:
     pop         si
     ret         2
 L$5:
-    DW  offset L$16
-    DW  offset L$18
-    DW  offset L$7
-    DW  offset L$7
-    DW  offset L$7
-    DW  offset L$7
-    DW  offset L$7
-    DW  offset L$7
-    DW  offset L$8
-    DW  offset L$18
-    DW  offset L$11
-    DW  offset L$15
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$18
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
-    DW  offset L$19
+    DW  L$16
+    DW  L$18
+    DW  L$7
+    DW  L$7
+    DW  L$7
+    DW  L$7
+    DW  L$7
+    DW  L$7
+    DW  L$8
+    DW  L$18
+    DW  L$11
+    DW  L$15
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$18
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
+    DW  L$19
 L$6:
-    DW  offset L$26
-    DW  offset L$62
-    DW  offset L$29
-    DW  offset L$30
-    DW  offset L$31
-    DW  offset L$35
-    DW  offset L$35
-    DW  offset L$33
-    DW  offset L$33
-    DW  offset L$36
-    DW  offset L$39
-    DW  offset L$40
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$43
-    DW  offset L$45
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$46
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$49
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$62
-    DW  offset L$50
-    DW  offset L$51
-    DW  offset L$52
-    DW  offset L$50
-    DW  offset L$53
-    DW  offset L$54
-    DW  offset L$50
-    DW  offset L$62
-    DW  offset L$55
-    DW  offset L$55
-    DW  offset L$62
-    DW  offset L$58
-    DW  offset L$52
-    DW  offset L$59
-    DW  offset L$60
-    DW  offset L$61
+    DW  L$26
+    DW  L$62
+    DW  L$29
+    DW  L$30
+    DW  L$31
+    DW  L$35
+    DW  L$35
+    DW  L$33
+    DW  L$33
+    DW  L$36
+    DW  L$39
+    DW  L$40
+    DW  L$62
+    DW  L$62
+    DW  L$62
+    DW  L$43
+    DW  L$45
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$46
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$49
+    DW  L$62
+    DW  L$62
+    DW  L$62
+    DW  L$62
+    DW  L$62
+    DW  L$62
+    DW  L$50
+    DW  L$51
+    DW  L$52
+    DW  L$50
+    DW  L$53
+    DW  L$54
+    DW  L$50
+    DW  L$62
+    DW  L$55
+    DW  L$55
+    DW  L$62
+    DW  L$58
+    DW  L$52
+    DW  L$59
+    DW  L$60
+    DW  L$61
 disasm_:
     push        cx
     push        si
@@ -1157,104 +1152,104 @@ disasm_:
     push        dx
     push        bx
     xor         di,di
-    mov         word ptr -1aH[bp],di
-    mov         word ptr -12H[bp],di
-    mov         word ptr -0eH[bp],di
-    mov         word ptr -18H[bp],ax
-    mov         word ptr -10H[bp],offset _opcode1
-    mov         word ptr -6[bp],di
-    mov         word ptr -8[bp],di
-    jmp         L$14
+    mov         word [-1aH+bp],di
+    mov         word [-12H+bp],di
+    mov         word [-0eH+bp],di
+    mov         word [-18H+bp],ax
+    mov         word [-10H+bp],_opcode1
+    mov         word [-6+bp],di
+    mov         word [-8+bp],di
+    jmp         strict near L$14
 L$7:
-    mov         al,byte ptr [si]
+    mov         al,byte [si]
     xor         ah,ah
     mov         bx,ax
     shl         bx,1
-    push        word ptr _seg_regs-4[bx]
-    mov         ax,offset L$451
+    push        word [_seg_regs-4+bx]
+    mov         ax,L$451
     push        ax
-    mov         ax,word ptr -3cH[bp]
+    mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
-    jmp         L$13
+    jmp         strict near L$13
 L$8:
-    cmp         word ptr -8[bp],0
+    cmp         word [-8+bp],0
     jne         L$9
     mov         ax,1
-    jmp         L$10
+    jmp         strict near L$10
 L$9:
     xor         ax,ax
 L$10:
-    mov         word ptr -8[bp],ax
-    jmp         L$14
+    mov         word [-8+bp],ax
+    jmp         strict near L$14
 L$11:
-    mov         dx,offset L$452
+    mov         dx,L$452
 L$12:
     push        dx
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,4
 L$13:
     add         di,ax
 L$14:
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-4[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_byte_
-    mov         al,byte ptr -4[bp]
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-4+bp]
+    lea         ax,[-18H+bp]
+    call        near get_byte_
+    mov         al,byte [-4+bp]
     xor         ah,ah
     mov         cl,3
     shl         ax,cl
-    mov         si,word ptr -10H[bp]
+    mov         si,word [-10H+bp]
     add         si,ax
-    test        byte ptr 7[si],80H
+    test        byte[ 7+si],80H
     je          L$20
-    mov         al,byte ptr [si]
+    mov         al,byte [si]
     cmp         al,25H
     ja          L$18
     xor         ah,ah
     mov         bx,ax
     shl         bx,1
-    mov         ax,word ptr -3cH[bp]
+    mov         ax,word [-3cH+bp]
     add         ax,di
-    jmp         word ptr cs:L$5[bx]
+    jmp         word [cs:L$5+bx]
 L$15:
-    mov         dx,offset L$453
+    mov         dx,L$453
     jmp         L$12
 L$16:
-    mov         ax,offset L$454
+    mov         ax,L$454
 L$17:
     push        ax
-    push        word ptr -3cH[bp]
-    call        near ptr esprintf_
+    push        word [-3cH+bp]
+    call        near esprintf_
     add         sp,4
-    jmp         near ptr L$63
+    jmp         near L$63
 L$18:
-    mov         ax,offset L$455
+    mov         ax,L$455
     jmp         L$17
 L$19:
-    mov         word ptr -12H[bp],1
+    mov         word [-12H+bp],1
 L$20:
-    test        byte ptr 7[si],10H
+    test        byte[ 7+si],10H
     je          L$21
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-2[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_byte_
-    cmp         word ptr -12H[bp],0
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-2+bp]
+    lea         ax,[-18H+bp]
+    call        near get_byte_
+    cmp         word [-12H+bp],0
     je          L$21
-    mov         al,byte ptr [si]
+    mov         al,byte [si]
     xor         ah,ah
     mov         cl,6
     shl         ax,cl
     sub         ax,500H
-    mov         si,offset _opcodeg
+    mov         si,_opcodeg
     add         si,ax
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     xor         ah,ah
     mov         cl,3
     sar         ax,cl
@@ -1263,350 +1258,350 @@ L$20:
     shl         ax,cl
     add         si,ax
 L$21:
-    test        byte ptr 7[si],40H
+    test        byte[ 7+si],40H
     je          L$22
-    cmp         word ptr -8[bp],0
+    cmp         word [-8+bp],0
     je          L$22
-    mov         word ptr -0eH[bp],1
+    mov         word [-0eH+bp],1
 L$22:
-    mov         al,byte ptr [si]
+    mov         al,byte [si]
     xor         ah,ah
     mov         bx,ax
-    add         bx,word ptr -0eH[bp]
+    add         bx,word [-0eH+bp]
     shl         bx,1
-    push        word ptr _opnames[bx]
-    mov         ax,offset L$456
+    push        word [_opnames+bx]
+    mov         ax,L$456
     push        ax
-    mov         ax,word ptr -3cH[bp]
+    mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
     add         di,ax
 L$23:
-    mov         bx,word ptr -3cH[bp]
+    mov         bx,word [-3cH+bp]
     add         bx,di
     cmp         di,7
     jge         L$24
-    mov         byte ptr [bx],20H
+    mov         byte [bx],20H
     inc         di
     jmp         L$23
 L$24:
-    mov         byte ptr [bx],0
-    lea         bx,2[si]
-    mov         word ptr -0aH[bp],bx
-    mov         word ptr -0cH[bp],0
+    mov         byte [bx],0
+    lea         bx,[2+si]
+    mov         word [-0aH+bp],bx
+    mov         word [-0cH+bp],0
 L$25:
-    mov         al,byte ptr 1[si]
+    mov         al,byte[ 1+si]
     xor         ah,ah
-    cmp         ax,word ptr -0cH[bp]
+    cmp         ax,word [-0cH+bp]
     jle         L$32
-    mov         word ptr -16H[bp],0
-    mov         word ptr -14H[bp],0
-    mov         bx,word ptr -0aH[bp]
-    mov         al,byte ptr [bx]
+    mov         word [-16H+bp],0
+    mov         word [-14H+bp],0
+    mov         bx,word [-0aH+bp]
+    mov         al,byte [bx]
     dec         al
     cmp         al,3dH
     ja          L$34
     mov         bx,ax
     shl         bx,1
-    jmp         word ptr cs:L$6[bx]
+    jmp         word [cs:L$6+bx]
 L$26:
-    mov         ax,word ptr -6[bp]
+    mov         ax,word [-6+bp]
     shl         ax,1
     inc         ax
     inc         ax
 L$27:
     push        ax
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_bytes_
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_bytes_
 L$28:
-    push        word ptr -16H[bp]
-    mov         ax,offset L$457
-    jmp         near ptr L$48
+    push        word [-16H+bp]
+    mov         ax,L$457
+    jmp         near L$48
 L$29:
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_byte_
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_byte_
     jmp         L$28
 L$30:
-    mov         ax,word ptr -8[bp]
+    mov         ax,word [-8+bp]
     shl         ax,1
     inc         ax
     inc         ax
     push        ax
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_bytes_
-    push        word ptr -16H[bp]
-    jmp         L$38
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_bytes_
+    push        word [-16H+bp]
+    jmp         strict near L$38
 L$31:
     mov         ax,2
     jmp         L$27
 L$32:
-    jmp         near ptr L$63
+    jmp         near L$63
 L$33:
-    mov         bx,word ptr -6[bp]
+    mov         bx,word [-6+bp]
     shl         bx,1
-    push        word ptr _dssi_regs[bx]
-    mov         ax,offset L$459
-    jmp         near ptr L$48
+    push        word [_dssi_regs+bx]
+    mov         ax,L$459
+    jmp         near L$48
 L$34:
-    jmp         near ptr L$62
+    jmp         near L$62
 L$35:
-    mov         bx,word ptr -6[bp]
+    mov         bx,word [-6+bp]
     shl         bx,1
-    push        word ptr _esdi_regs[bx]
-    mov         ax,offset L$460
-    jmp         near ptr L$48
+    push        word [_esdi_regs+bx]
+    mov         ax,L$460
+    jmp         near L$48
 L$36:
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_byte_
-    mov         al,byte ptr -16H[bp]
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_byte_
+    mov         al,byte [-16H+bp]
     xor         ah,ah
-    add         ax,word ptr -18H[bp]
+    add         ax,word [-18H+bp]
 L$37:
     push        ax
 L$38:
-    mov         ax,offset L$458
-    jmp         near ptr L$48
+    mov         ax,L$458
+    jmp         near L$48
 L$39:
-    mov         ax,word ptr -8[bp]
+    mov         ax,word [-8+bp]
     shl         ax,1
     inc         ax
     inc         ax
     push        ax
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_bytes_
-    mov         ax,word ptr -18H[bp]
-    add         ax,word ptr -16H[bp]
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_bytes_
+    mov         ax,word [-18H+bp]
+    add         ax,word [-16H+bp]
     jmp         L$37
 L$40:
-    mov         ax,word ptr -8[bp]
+    mov         ax,word [-8+bp]
     shl         ax,1
     inc         ax
     inc         ax
     push        ax
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-16H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_bytes_
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-16H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_bytes_
     mov         ax,2
     push        ax
-    lea         cx,-1aH[bp]
-    mov         bx,word ptr -3eH[bp]
-    lea         dx,-14H[bp]
-    lea         ax,-18H[bp]
-    call        near ptr get_bytes_
-    push        word ptr -16H[bp]
-    push        word ptr -14H[bp]
-    mov         ax,offset L$461
+    lea         cx,[-1aH+bp]
+    mov         bx,word [-3eH+bp]
+    lea         dx,[-14H+bp]
+    lea         ax,[-18H+bp]
+    call        near get_bytes_
+    push        word [-16H+bp]
+    push        word [-14H+bp]
+    mov         ax,L$461
     push        ax
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,8
 L$41:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    mov         ax,offset L$463
+    mov         ax,L$463
     push        ax
-    mov         ax,word ptr -3cH[bp]
+    mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
     add         di,ax
-    mov         al,byte ptr 1[si]
+    mov         al,byte[ 1+si]
     xor         ah,ah
     dec         ax
-    cmp         ax,word ptr -0cH[bp]
+    cmp         ax,word [-0cH+bp]
     jle         L$42
-    mov         ax,offset L$465
+    mov         ax,L$465
     push        ax
-    mov         ax,word ptr -3cH[bp]
+    mov         ax,word [-3cH+bp]
     add         ax,di
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,4
     add         di,ax
 L$42:
-    inc         word ptr -0cH[bp]
-    inc         word ptr -0aH[bp]
-    jmp         near ptr L$25
+    inc         word [-0cH+bp]
+    inc         word [-0aH+bp]
+    jmp         near L$25
 L$43:
     mov         ax,1
 L$44:
     push        ax
-    mov         ax,offset L$462
-    jmp         L$48
+    mov         ax,L$462
+    jmp         strict near L$48
 L$45:
     mov         ax,3
     jmp         L$44
 L$46:
-    mov         bx,word ptr -0aH[bp]
-    mov         al,byte ptr [bx]
+    mov         bx,word [-0aH+bp]
+    mov         al,byte [bx]
     xor         ah,ah
     mov         bx,ax
     shl         bx,1
-    push        word ptr _direct_regs-24H[bx]
+    push        word [_direct_regs-24H+bx]
 L$47:
-    mov         ax,offset L$463
+    mov         ax,L$463
 L$48:
     push        ax
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
     jmp         L$41
 L$49:
-    mov         bx,word ptr -0aH[bp]
-    mov         al,byte ptr [bx]
+    mov         bx,word [-0aH+bp]
+    mov         al,byte [bx]
     xor         ah,ah
     mov         bx,ax
     shl         bx,1
-    push        word ptr _ea_regs-32H[bx]
+    push        word [_ea_regs-32H+bx]
     jmp         L$47
 L$50:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    lea         ax,-1aH[bp]
+    lea         ax,[-1aH+bp]
     push        ax
-    push        word ptr -3eH[bp]
-    mov         al,byte ptr -2[bp]
+    push        word [-3eH+bp]
+    mov         al,byte [-2+bp]
     xor         ah,ah
-    lea         cx,-18H[bp]
+    lea         cx,[-18H+bp]
     mov         bx,ax
     xor         dx,dx
-    jmp         L$57
+    jmp         strict near L$57
 L$51:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    lea         ax,-1aH[bp]
+    lea         ax,[-1aH+bp]
     push        ax
-    push        word ptr -3eH[bp]
-    mov         al,byte ptr -2[bp]
+    push        word [-3eH+bp]
+    mov         al,byte [-2+bp]
     xor         ah,ah
-    mov         dx,word ptr -8[bp]
+    mov         dx,word [-8+bp]
     inc         dx
-    lea         cx,-18H[bp]
+    lea         cx,[-18H+bp]
     mov         bx,ax
-    jmp         L$57
+    jmp         strict near L$57
 L$52:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    lea         ax,-1aH[bp]
+    lea         ax,[-1aH+bp]
     push        ax
-    push        word ptr -3eH[bp]
-    mov         al,byte ptr -2[bp]
+    push        word [-3eH+bp]
+    mov         al,byte [-2+bp]
     xor         ah,ah
-    lea         cx,-18H[bp]
+    lea         cx,[-18H+bp]
     mov         bx,ax
     mov         dx,1
-    jmp         L$57
+    jmp         strict near L$57
 L$53:
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     mov         cl,3
     mov         bx,ax
     sar         bx,cl
     xor         bh,bh
     and         bl,7
     shl         bx,1
-    push        word ptr _ea_regs[bx]
-    jmp         near ptr L$47
+    push        word [_ea_regs+bx]
+    jmp         near L$47
 L$54:
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     mov         cl,3
     mov         bx,ax
     sar         bx,cl
     xor         bh,bh
     and         bl,7
     shl         bx,1
-    push        word ptr _ea_regs+10H[bx]
-    jmp         near ptr L$47
+    push        word [_ea_regs+10H+bx]
+    jmp         near L$47
 L$55:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    lea         ax,-1aH[bp]
+    lea         ax,[-1aH+bp]
     push        ax
-    push        word ptr -3eH[bp]
-    mov         al,byte ptr -2[bp]
+    push        word [-3eH+bp]
+    mov         al,byte [-2+bp]
     xor         ah,ah
-    lea         cx,-18H[bp]
+    lea         cx,[-18H+bp]
     mov         bx,ax
 L$56:
     mov         dx,2
 L$57:
-    mov         ax,word ptr -6[bp]
-    call        near ptr dec_modrm_
-    jmp         near ptr L$41
+    mov         ax,word [-6+bp]
+    call        near dec_modrm_
+    jmp         near L$41
 L$58:
-    lea         ax,-3aH[bp]
+    lea         ax,[-3aH+bp]
     push        ax
-    lea         ax,-1aH[bp]
+    lea         ax,[-1aH+bp]
     push        ax
-    push        word ptr -3eH[bp]
-    mov         bl,byte ptr -2[bp]
+    push        word [-3eH+bp]
+    mov         bl,byte [-2+bp]
     xor         bh,bh
-    lea         cx,-18H[bp]
+    lea         cx,[-18H+bp]
     jmp         L$56
 L$59:
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     mov         cl,3
     mov         bx,ax
     sar         bx,cl
     xor         bh,bh
     and         bl,7
     shl         bx,1
-    push        word ptr _seg_regs[bx]
-    jmp         near ptr L$47
+    push        word [_seg_regs+bx]
+    jmp         near L$47
 L$60:
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     mov         cl,3
     mov         bx,ax
     sar         bx,cl
     xor         bh,bh
     and         bl,7
     shl         bx,1
-    push        word ptr _cntrl_regs[bx]
-    jmp         near ptr L$47
+    push        word [_cntrl_regs+bx]
+    jmp         near L$47
 L$61:
-    mov         al,byte ptr -2[bp]
+    mov         al,byte [-2+bp]
     mov         cl,3
     mov         bx,ax
     sar         bx,cl
     xor         bh,bh
     and         bl,7
     shl         bx,1
-    push        word ptr _debug_regs[bx]
-    jmp         near ptr L$47
+    push        word [_debug_regs+bx]
+    jmp         near L$47
 L$62:
-    mov         bx,word ptr -0aH[bp]
-    mov         al,byte ptr [bx]
+    mov         bx,word [-0aH+bp]
+    mov         al,byte [bx]
     xor         ah,ah
     push        ax
-    mov         ax,offset L$464
+    mov         ax,L$464
     push        ax
-    add         di,word ptr -3cH[bp]
+    add         di,word [-3cH+bp]
     push        di
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
 L$63:
-    mov         cx,word ptr -18H[bp]
+    mov         cx,word [-18H+bp]
     mov         ax,cx
 L$64:
     mov         sp,bp
@@ -1624,7 +1619,7 @@ dec_modrm_:
     sub         sp,22H
     PUSH        DX
     mov         si,cx
-    mov         di,word ptr 0aH[bp]
+    mov         di,word[ 0aH+bp]
     mov         al,bl
     xor         ah,ah
     mov         cl,6
@@ -1634,87 +1629,87 @@ dec_modrm_:
     and         dl,3
     mov         dh,bl
     and         dh,7
-    mov         word ptr -2[bp],0
+    mov         word [-2+bp],0
     mov         al,dh
     mov         bx,ax
     shl         bx,1
-    push        word ptr _ea_modes[bx]
-    mov         ax,offset L$466
+    push        word [_ea_modes+bx]
+    mov         ax,L$466
     push        ax
-    lea         ax,-22H[bp]
+    lea         ax,[-22H+bp]
     push        ax
-    call        near ptr esprintf_
+    call        near esprintf_
     add         sp,6
     cmp         dl,3
     jne         L$67
     
     mov         cl,4
-    mov         ax,word ptr -24H[bp]
+    mov         ax,word [-24H+bp]
     shl         ax,cl
     add         bx,ax
   
-    push        word ptr _ea_regs[bx]
+    push        word [_ea_regs+bx]
 L$65:
-    mov         ax,offset L$463
+    mov         ax,L$463
 L$66:
     push        ax
-    push        word ptr 0cH[bp]
-    call        near ptr esprintf_
+    push        word[ 0cH+bp]
+    call        near esprintf_
     add         sp,6
-    jmp         L$71
+    jmp         strict near L$71
 L$67:
     test        dl,dl
     jne         L$69
     cmp         dh,cl
     jne         L$68
     mov         cx,di
-    mov         bx,word ptr 8[bp]
-    lea         dx,-2[bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-2+bp]
     mov         ax,si
-    call        near ptr get_byte_
+    call        near get_byte_
     mov         cx,di
-    mov         bx,word ptr 8[bp]
-    lea         dx,-1[bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-1+bp]
     mov         ax,si
-    call        near ptr get_byte_
-    push        word ptr -2[bp]
-    mov         ax,offset L$467
+    call        near get_byte_
+    push        word [-2+bp]
+    mov         ax,L$467
     jmp         L$66
 L$68:
-    lea         ax,-22H[bp]
+    lea         ax,[-22H+bp]
     push        ax
     jmp         L$65
 L$69:
     cmp         dl,1
     jne         L$72
     mov         cx,di
-    mov         bx,word ptr 8[bp]
-    lea         dx,-2[bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-2+bp]
 L$70:
     mov         ax,si
-    call        near ptr get_byte_
-    push        word ptr -2[bp]
-    lea         ax,-22H[bp]
+    call        near get_byte_
+    push        word [-2+bp]
+    lea         ax,[-22H+bp]
     push        ax
-    mov         ax,offset L$468
+    mov         ax,L$468
     push        ax
-    push        word ptr 0cH[bp]
-    call        near ptr esprintf_
+    push        word[ 0cH+bp]
+    call        near esprintf_
     add         sp,8
 L$71:
     xor         ax,ax
-    jmp         L$74
+    jmp         strict near L$74
 L$72:
     cmp         dl,2
     jne         L$73
     mov         cx,di
-    mov         bx,word ptr 8[bp]
-    lea         dx,-2[bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-2+bp]
     mov         ax,si
-    call        near ptr get_byte_
+    call        near get_byte_
     mov         cx,di
-    mov         bx,word ptr 8[bp]
-    lea         dx,-1[bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-1+bp]
     jmp         L$70
 L$73:
     mov         ax,0ffffH
@@ -1731,9 +1726,9 @@ printchar_:
     mov         ax,dx
     test        bx,bx
     je          L$75
-    mov         si,word ptr [bx]
-    mov         byte ptr [si],dl
-    inc         word ptr [bx]
+    mov         si,word [bx]
+    mov         byte [si],dl
+    inc         word [bx]
     pop         si
     pop         bx
     ret         
@@ -1752,13 +1747,13 @@ prints_:
     mov         si,dx
     mov         dx,cx
     xor         cx,cx
-    mov         word ptr -2[bp],20H
+    mov         word [-2+bp],20H
     test        bx,bx
     jle         L$80
     xor         ax,ax
     mov         di,si
 L$76:
-    cmp         byte ptr [di],0
+    cmp         byte [di],0
     je          L$77
     inc         ax
     inc         di
@@ -1767,48 +1762,48 @@ L$77:
     cmp         ax,bx
     jl          L$78
     xor         bx,bx
-    jmp         L$79
+    jmp         strict near L$79
 L$78:
     sub         bx,ax
 L$79:
     test        dl,2
     je          L$80
-    mov         word ptr -2[bp],30H
+    mov         word [-2+bp],30H
 L$80:
     test        dl,1
     jne         L$82
 L$81:
     test        bx,bx
     jle         L$82
-    mov         dx,word ptr -2[bp]
-    mov         ax,word ptr -4[bp]
-    call        near ptr printchar_
+    mov         dx,word [-2+bp]
+    mov         ax,word [-4+bp]
+    call        near printchar_
     inc         cx
     dec         bx
     jmp         L$81
 L$82:
-    cmp         byte ptr [si],0
+    cmp         byte [si],0
     je          L$83
-    mov         al,byte ptr [si]
+    mov         al,byte [si]
     xor         ah,ah
     mov         dx,ax
-    mov         ax,word ptr -4[bp]
-    call        near ptr printchar_
+    mov         ax,word [-4+bp]
+    call        near printchar_
     inc         cx
     inc         si
     jmp         L$82
 L$83:
     test        bx,bx
     jle         L$84
-    mov         dx,word ptr -2[bp]
-    mov         ax,word ptr -4[bp]
-    call        near ptr printchar_
+    mov         dx,word [-2+bp]
+    mov         ax,word [-4+bp]
+    call        near printchar_
     inc         cx
     dec         bx
     jmp         L$83
 L$84:
     mov         ax,cx
-    jmp         near ptr L$2
+    jmp         near L$2
 printi_:
     push        si
     push        di
@@ -1816,75 +1811,75 @@ printi_:
     mov         bp,sp
     sub         sp,12H
     mov         di,ax
-    mov         word ptr -6[bp],bx
-    mov         word ptr -4[bp],0
-    mov         word ptr -2[bp],0
+    mov         word [-6+bp],bx
+    mov         word [-4+bp],0
+    mov         word [-2+bp],0
     mov         bx,dx
     test        dx,dx
     jne         L$85
-    mov         word ptr -12H[bp],30H
-    mov         cx,word ptr 0aH[bp]
-    mov         bx,word ptr 8[bp]
-    lea         dx,-12H[bp]
-    call        near ptr prints_
-    jmp         near ptr L$74
+    mov         word [-12H+bp],30H
+    mov         cx,word[ 0aH+bp]
+    mov         bx,word[ 8+bp]
+    lea         dx,[-12H+bp]
+    call        near prints_
+    jmp         near L$74
 L$85:
     test        cx,cx
     je          L$86
-    cmp         word ptr -6[bp],0aH
+    cmp         word [-6+bp],0aH
     jne         L$86
     test        dx,dx
     jge         L$86
-    mov         word ptr -4[bp],1
+    mov         word [-4+bp],1
     neg         bx
 L$86:
-    lea         si,-7[bp]
-    mov         byte ptr -7[bp],0
+    lea         si,[-7+bp]
+    mov         byte [-7+bp],0
 L$87:
     test        bx,bx
     je          L$89
     mov         ax,bx
     xor         dx,dx
-    div         word ptr -6[bp]
+    div         word [-6+bp]
     cmp         dx,0aH
     jl          L$88
-    mov         ax,word ptr 0cH[bp]
+    mov         ax,word[ 0cH+bp]
     sub         ax,3aH
     add         dx,ax
 L$88:
     mov         al,dl
     add         al,30H
     dec         si
-    mov         byte ptr [si],al
+    mov         byte [si],al
     mov         ax,bx
     xor         dx,dx
-    div         word ptr -6[bp]
+    div         word [-6+bp]
     mov         bx,ax
     jmp         L$87
 L$89:
-    cmp         word ptr -4[bp],0
+    cmp         word [-4+bp],0
     je          L$91
-    cmp         word ptr 8[bp],0
+    cmp         word[ 8+bp],0
     je          L$90
-    test        byte ptr 0aH[bp],2
+    test        byte[ 0aH+bp],2
     je          L$90
     mov         dx,2dH
     mov         ax,di
-    call        near ptr printchar_
-    inc         word ptr -2[bp]
-    dec         word ptr 8[bp]
-    jmp         L$91
+    call        near printchar_
+    inc         word [-2+bp]
+    dec         word[ 8+bp]
+    jmp         strict near L$91
 L$90:
     dec         si
-    mov         byte ptr [si],2dH
+    mov         byte [si],2dH
 L$91:
-    mov         cx,word ptr 0aH[bp]
-    mov         bx,word ptr 8[bp]
+    mov         cx,word[ 0aH+bp]
+    mov         bx,word[ 8+bp]
     mov         dx,si
     mov         ax,di
-    call        near ptr prints_
-    add         ax,word ptr -2[bp]
-    jmp         near ptr L$74
+    call        near prints_
+    add         ax,word [-2+bp]
+    jmp         near L$74
 print_:
     push        cx
     push        si
@@ -1896,157 +1891,157 @@ print_:
     push        ax
     mov         si,dx
     mov         di,bx
-    mov         word ptr -2[bp],0
+    mov         word [-2+bp],0
 L$92:
-    cmp         byte ptr [si],0
+    cmp         byte [si],0
     je          L$96
-    cmp         byte ptr [si],25H
+    cmp         byte [si],25H
     jne         L$97
     xor         cx,cx
     xor         dx,dx
     inc         si
-    cmp         byte ptr [si],0
+    cmp         byte [si],0
     je          L$96
-    cmp         byte ptr [si],25H
+    cmp         byte [si],25H
     je          L$97
-    cmp         byte ptr [si],2dH
+    cmp         byte [si],2dH
     jne         L$93
     mov         cx,1
     add         si,cx
 L$93:
-    cmp         byte ptr [si],30H
+    cmp         byte [si],30H
     jne         L$94
     or          cl,2
     inc         si
     jmp         L$93
 L$94:
-    cmp         byte ptr [si],30H
+    cmp         byte [si],30H
     jb          L$95
-    cmp         byte ptr [si],39H
+    cmp         byte [si],39H
     ja          L$95
     mov         ax,dx
     mov         dx,0aH
     imul        dx
     mov         dx,ax
-    mov         bl,byte ptr [si]
+    mov         bl,byte [si]
     xor         bh,bh
     sub         bx,30H
     add         dx,bx
     inc         si
     jmp         L$94
 L$95:
-    cmp         byte ptr [si],73H
+    cmp         byte [si],73H
     jne         L$101
-    add         word ptr [di],2
-    mov         bx,word ptr [di]
-    mov         ax,word ptr -2[bx]
+    add         word [di],2
+    mov         bx,word [di]
+    mov         ax,word [-2+bx]
     mov         bx,dx
     test        ax,ax
     je          L$98
     mov         dx,ax
-    jmp         L$99
+    jmp         strict near L$99
 L$96:
-    jmp         near ptr L$111
+    jmp         near L$111
 L$97:
-    jmp         near ptr L$109
+    jmp         near L$109
 L$98:
-    mov         dx,offset L$469
+    mov         dx,L$469
 L$99:
-    mov         ax,word ptr -6[bp]
-    call        near ptr prints_
+    mov         ax,word [-6+bp]
+    call        near prints_
 L$100:
-    add         word ptr -2[bp],ax
-    jmp         near ptr L$110
+    add         word [-2+bp],ax
+    jmp         strict near L$110
 L$101:
-    cmp         byte ptr [si],64H
+    cmp         byte [si],64H
     jne         L$104
     mov         ax,61H
     push        ax
     push        cx
     push        dx
-    add         word ptr [di],2
-    mov         bx,word ptr [di]
-    mov         dx,word ptr -2[bx]
+    add         word [di],2
+    mov         bx,word [di]
+    mov         dx,word [-2+bx]
     mov         cx,1
 L$102:
     mov         bx,0aH
 L$103:
-    mov         ax,word ptr -6[bp]
-    call        near ptr printi_
+    mov         ax,word [-6+bp]
+    call        near printi_
     jmp         L$100
 L$104:
-    cmp         byte ptr [si],78H
+    cmp         byte [si],78H
     jne         L$106
     mov         ax,61H
 L$105:
     push        ax
     push        cx
     push        dx
-    add         word ptr [di],2
-    mov         bx,word ptr [di]
-    mov         dx,word ptr -2[bx]
+    add         word [di],2
+    mov         bx,word [di]
+    mov         dx,word [-2+bx]
     xor         cx,cx
     mov         bx,10H
     jmp         L$103
 L$106:
-    cmp         byte ptr [si],58H
+    cmp         byte [si],58H
     jne         L$107
     mov         ax,41H
     jmp         L$105
 L$107:
-    cmp         byte ptr [si],75H
+    cmp         byte [si],75H
     jne         L$108
     mov         ax,61H
     push        ax
     push        cx
     push        dx
-    add         word ptr [di],2
-    mov         bx,word ptr [di]
-    mov         dx,word ptr -2[bx]
+    add         word [di],2
+    mov         bx,word [di]
+    mov         dx,word [-2+bx]
     xor         cx,cx
     jmp         L$102
 L$108:
-    cmp         byte ptr [si],63H
+    cmp         byte [si],63H
     jne         L$110
-    add         word ptr [di],2
-    mov         bx,word ptr [di]
-    mov         al,byte ptr -2[bx]
-    mov         byte ptr -4[bp],al
-    mov         byte ptr -3[bp],0
+    add         word [di],2
+    mov         bx,word [di]
+    mov         al,byte [-2+bx]
+    mov         byte [-4+bp],al
+    mov         byte [-3+bp],0
     mov         bx,dx
-    lea         dx,-4[bp]
-    jmp         near ptr L$99
+    lea         dx,[-4+bp]
+    jmp         near L$99
 L$109:
-    mov         dl,byte ptr [si]
+    mov         dl,byte [si]
     xor         dh,dh
-    mov         ax,word ptr -6[bp]
-    call        near ptr printchar_
-    inc         word ptr -2[bp]
+    mov         ax,word [-6+bp]
+    call        near printchar_
+    inc         word [-2+bp]
 L$110:
     inc         si
-    jmp         near ptr L$92
+    jmp         near L$92
 L$111:
-    cmp         word ptr -6[bp],0
+    cmp         word [-6+bp],0
     je          L$112
-    mov         bx,word ptr -6[bp]
-    mov         bx,word ptr [bx]
-    mov         byte ptr [bx],0
+    mov         bx,word [-6+bp]
+    mov         bx,word [bx]
+    mov         byte [bx],0
 L$112:
-    mov         word ptr [di],0
-    mov         ax,word ptr -2[bp]
-    jmp         near ptr L$64
+    mov         word [di],0
+    mov         ax,word [-2+bp]
+    jmp         near L$64
 esprintf_:
     push        bx
     push        dx
     push        bp
     mov         bp,sp
     push        ax
-    lea         ax,0cH[bp]
-    mov         word ptr -2[bp],ax
-    lea         bx,-2[bp]
-    mov         dx,word ptr 0aH[bp]
-    lea         ax,8[bp]
-    call        near ptr print_
+    lea         ax,[0cH+bp]
+    mov         word [-2+bp],ax
+    lea         bx,[-2+bp]
+    mov         dx,word[ 0aH+bp]
+    lea         ax,[8+bp]
+    call        near print_
     mov         sp,bp
     pop         bp
     pop         dx
@@ -2056,7 +2051,7 @@ esprintf_:
 ;----------------------------------------------------------------------
 ; Display Help Menu
 ;----------------------------------------------------------------------
-DISPHELP:   MOV     SI,OFFSET HELP_MESS         ; OFFSET -> SI
+DISPHELP:   MOV     SI,HELP_MESS         ; -> SI
             CALL    PUTS                        ; String pointed to by DS:[SI]
 EXITDH:     JMP     CMD                         ; Next Command
 
@@ -2336,17 +2331,17 @@ INT1_3:     PUSH    BP
             MOV     AX,CS                       ; Restore Monitor's Data segment
             MOV     DS,AX                       
                         
-            MOV     AX,SS:[BP+4]                ; Get user CS
+            MOV     AX,[BP+4]                ; Get user CS
             MOV     ES,AX                       ; Used for restoring bp replaced opcode
             MOV     [UCS],AX                    ; Save User CS            
            
-            MOV     AX,SS:[BP+2]                ; Save User IP
+            MOV     AX,[BP+2]                ; Save User IP
             MOV     [UIP],AX
                                    
             MOV     DI,SP                       ; SS:SP=AX
-            MOV     BX,OFFSET UAX               ; Update User registers, DI=pointing to AX
+            MOV     BX,UAX               ; Update User registers, DI=pointing to AX
             MOV     CX,11
-NEXTUREG:   MOV     AX,SS:[DI]                  ; Get register
+NEXTUREG:   MOV     AX,[SS:DI]                  ; Get register
             MOV     [BX],AX                     ; Write it to user reg
             ADD     BX,2
             ADD     DI,2
@@ -2356,22 +2351,22 @@ NEXTUREG:   MOV     AX,SS:[DI]                  ; Get register
             ADD     AX,8                        
             MOV     [USP],AX
 
-            MOV     AX,SS:[BP]
+            MOV     AX,[BP]
             MOV     [UBP],AX                    ; Restore real BP value
             
-            MOV     AX,SS:[BP+6]                ; Save Flags            
+            MOV     AX,[BP+6]                ; Save Flags            
             MOV     [UFL],AX
-            AND     [UFL],0FEFFh                ; Clear TF
+            AND     word [UFL],0FEFFh                ; Clear TF
             TEST    AX,0100h                    ; Check If Trace flag set then
             JZ      CONTBPC                     ; No, check which bp triggered it
                         
-            JMP     EXITINT3                    ; Exit, Display regs, Cmd prompt
+            JMP     strict near EXITINT3	; Exit, Display regs, Cmd prompt
             
-CONTBPC:    DEC     [UIP]                       ; No, IP-1 and save
+CONTBPC:    DEC     word [UIP]                       ; No, IP-1 and save
                                  
-            MOV     SI,OFFSET BREAKP_MESS       ; Display "***** BreakPoint # *****
+            MOV     SI,BREAKP_MESS       ; Display "***** BreakPoint # *****
 
-            MOV     BX,OFFSET BPTAB             ; Check which breakpoint triggered
+            MOV     BX,BPTAB             ; Check which breakpoint triggered
             MOV     CX,8                        ; and restore opcode
 INTNEXTBP:  MOV     AX,8
             SUB     AL,CL
@@ -2387,7 +2382,7 @@ INTNEXTBP:  MOV     AX,8
             MOV     [SI+18],AL                  ; Save number
            
 INT3RES:    MOV     AL,BYTE [BX+2]              ; Get original Opcode
-            MOV     ES:[DI],AL                  ; Write it back
+            MOV     [ES:DI],AL                  ; Write it back
 
 INT3RESBP:  ADD     BX,4                        ; Next entry
             LOOP    INTNEXTBP
@@ -2397,7 +2392,7 @@ INT3RESBP:  ADD     BX,4                        ; Next entry
 EXITINT3:   MOV     AX,CS                       ; Restore Monitor settings
             MOV     SS,AX
 ;            MOV     DS,AX
-            MOV     AX,OFFSET TOS               ; Top of Stack
+            MOV     AX,TOS               ; Top of Stack
             MOV     SP,AX                       ; Restore Monitor Stack pointer
             MOV     AX,BASE_SEGMENT             ; Restore Base Pointer
             MOV     ES,AX
@@ -2416,10 +2411,10 @@ EXITINT3:   MOV     AX,CS                       ; Restore Monitor settings
 ; Changed                                               
 ;----------------------------------------------------------------------
 INT10:      CMP     AH,0Eh
-            JNE     ISR10_x
+            JNE     ISR10_X
 
             CALL    TXCHAR                      ; Transmit character
-            JMP     isr10_ret
+            JMP     strict near ISR10_RET
             
 ;----------------------------------------------------------------------                                         
 ; Service Unkown service, display message int and ah value, return to monitor 
@@ -2448,7 +2443,7 @@ ISR16_00:   CMP     AH,00h
             CALL    RXCHAR
             XOR     AH,AH
             
-            JMP     ISR16_RET
+            JMP     strict near ISR16_RET
 
 ;----------------------------------------------------------------------
 ; Interrupt 16H, I/O function                                           
@@ -2461,7 +2456,7 @@ ISR16_01:   CMP     AH,01h
             JNE     ISR16_X 
                    
             XOR     AH,AH                       ; Clear ScanCode            
-            OR      WORD SS:[BP+8],0040h        ; SET ZF in stack stored flag
+            OR      WORD [BP+8],0040h        ; SET ZF in stack stored flag
             
 ;            MOV     DX,COMPORT+STATUS
 ;            IN      AL,DX                       ; Get Status
@@ -2479,8 +2474,8 @@ ISR16_01:   CMP     AH,01h
             MOV     DX,RBR    
             IN      AL,DX                       ; return result in al
 
-            AND     WORD SS:[BP+8],0FFBFh       ; Clear ZF in stack stored flag
-            JMP     ISR16_RET                                                                   
+            AND     WORD [BP+8],0FFBFh       ; Clear ZF in stack stored flag
+            JMP     strict near ISR16_RET
                     
 ;----------------------------------------------------------------------                                          
 ; Service Unkown service, display message int and ah value, return to monitor 
@@ -2526,8 +2521,8 @@ ISR1A_00:   CMP     AH,00h
             
             MOV     CX,65520                    ; 60*60*18.2
             MUL     CX                          ; DX:AX=result hours
-            MOV     TEMP1,DX
-            MOV     TEMP2,AX
+            MOV     word [TEMP1],DX
+            MOV     word [TEMP2],AX
                         
             MOV     AX,02h                      ; Minutes
             OUT     RTC_BASE,AL
@@ -2535,8 +2530,8 @@ ISR1A_00:   CMP     AH,00h
             
             MOV     CX,1092
             MUL     CX                          ; DX:AX=result minutes
-            ADD     TEMP2,AX                    ; TEMP2=AX+TEMP2
-            ADC     TEMP1,DX                    ; TEMP1=DX+TEMP1+carry
+            ADD     word [TEMP2],AX                    ; TEMP2=AX+TEMP2
+            ADC     word [TEMP1],DX                    ; TEMP1=DX+TEMP1+carry
                                                 ; TEMP1:TEMP2 (hour+minutes)*18.2
             
             MOV     AL,00h                      ; Seconds
@@ -2551,12 +2546,12 @@ ISR1A_00:   CMP     AH,00h
             DIV     CX                          ; AX=seconds*18.2 DX=remainder(ignored)
             
             XOR     DX,DX
-            ADD     TEMP2,AX
-            ADC     TEMP1,DX                    ; Add Carry
-            MOV     CX,TEMP1
-            MOV     DX,TEMP2
+            ADD     word [TEMP2],AX
+            ADC     word [TEMP1],DX                    ; Add Carry
+            MOV     CX,word [TEMP1]
+            MOV     DX,word [TEMP2]
             
-            JMP     ISR1A_RET                   ; exit
+            JMP     strict near ISR1A_RET	; exit
 
 TEMP1       DW      0
 TEMP2       DW      0                           
@@ -2614,7 +2609,7 @@ ISR1A_01W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             POP     DX
             POP     CX
             POP     BX
-            JMP     ISR1A_RET                   ; exit
+            JMP     strict near ISR1A_RET	; exit
             
             
 ;----------------------------------------------------------------------
@@ -2631,7 +2626,7 @@ ISR1A_02:   CMP     AH,02h
             JNE     ISR1A_03
             
             CALL    READRTC
-            JMP     ISR1A_RET                   ; exit
+            JMP     strict near ISR1A_RET	; exit
 
 READRTC:    MOV     AL,00h                      ; Seconds
             OUT     RTC_BASE,AL
@@ -2687,7 +2682,7 @@ ISR1A_03W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             MOV     AL,CH
             OUT     RTC_DATA,AL
             
-            JMP     ISR1A_RET
+            JMP     strict near ISR1A_RET
             
 ;----------------------------------------------------------------------
 ; Int 1Ah function 04h - Get RTC date
@@ -2720,7 +2715,7 @@ ISR1A_04:   CMP     AH,04h
             MOV     CL,AL
             MOV     CH,20h          
             
-            JMP     ISR1A_RET
+            JMP     strict near ISR1A_RET
 
 ;----------------------------------------------------------------------
 ; Int 1Ah function 05h - Set RTC date
@@ -2732,7 +2727,7 @@ ISR1A_04:   CMP     AH,04h
 ;   exit:   none        
 ;----------------------------------------------------------------------
 ISR1A_05:   CMP     AH,05h
-            JNE     ISR1A_x
+            JNE     ISR1A_X
             
             MOV     AL,0Ah      
             OUT     RTC_BASE,AL
@@ -2755,7 +2750,7 @@ ISR1A_05W:  IN      AL,RTC_DATA                 ; Check Update In Progress Flag
             MOV     AL,CL
             OUT     RTC_DATA,AL
             
-            JMP     ISR1A_RET
+            JMP     strict near ISR1A_RET
             
 ;----------------------------------------------------------------------
 ; Interrupt 1Ah                                           
@@ -2765,7 +2760,7 @@ ISR1A_X:    MOV     AL,1Ah
             CALL    DISPSERI                    ; Display Int and service number
             JMP     INITMON                     ; Jump back to monitor
 
-ISR1A_RET:  AND     WORD SS:[BP+8],0FFFEh       ; Clear Carry to indicate no error
+ISR1A_RET:  AND     WORD [BP+8],0FFFEh       ; Clear Carry to indicate no error
             POP     BP
             POP     DS      
             IRET        
@@ -2791,7 +2786,7 @@ ISR21_1:    CMP     AH,01
             JNE     ISR21_2                         
 
             CALL    RXCHAR                      ; Return result in AL
-            JMP     ISR21_RET                   ; return to caller
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2806,7 +2801,7 @@ ISR21_2:    CMP     AH,02
             MOV     AL,DL
             CALL    TXCHAR
         
-            JMP     ISR21_RET                   ; return to caller
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2819,12 +2814,12 @@ ISR21_8:    CMP     AH,08
             JNE     ISR21_9                         
 
             CALL    RXCHAR                      ; Return result in AL
-            JMP     ISR21_RET                   ; return to caller
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
 ; Service   09   write 0 terminated string to UART  (change to $ terminated ??)                
-; Input     DX   offset to string                                
+; Input     DX   to string                                
 ; Output                                                  
 ; Changed   AX                                            
 ;----------------------------------------------------------------------
@@ -2834,7 +2829,7 @@ ISR21_9:    CMP     AH,09
             MOV     SI,DX
             CALL    PUTS                        ; Display string DS[SI]
                 
-            JMP     ISR21_RET                   ; return to caller
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2855,13 +2850,13 @@ ISR21_25:   CMP     AH,25h
             XOR     AX,AX
             MOV     ES,AX                       ; Int table segment=0000
 
-            MOV     ES:[SI],DX                  ; Set offset
+            MOV     [ES:SI],DX                  ; Set offset
             INC     SI
             INC     SI                          ; SI POINT TO INT CS
-            MOV     ES:[SI],DS                  ; Set segment
+            MOV     [ES:SI],DS                  ; Set segment
 
 
-            JMP     ISR21_RET                   ; return to caller
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2893,8 +2888,8 @@ ISR21_0B:   CMP     AH,0Bh
             ;AND     AL,RX_AVAIL
             AND     AL,DR
 
-            JMP     ISR21_RET
-                                
+            JMP     strict near ISR21_RET	; return to caller
+
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
 ; Service   2Ch  Get System Time 
@@ -2910,7 +2905,7 @@ ISR21_2C:   CMP     AH,02Ch
 ;            INT        1Ah                         
 ;            XOR        DL,DL                       ; Ignore 1/100 seconds value
             CALL    READRTC                     ; Get System Time
-            JMP     ISR21_RET
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2920,7 +2915,7 @@ ISR21_30:   CMP     AH,030h
             JNE     ISR21_3D 
             
             MOV     AL,02                       ; DOS=2.0
-            JMP     ISR21_RET
+            JMP     strict near ISR21_RET	; return to caller
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2930,7 +2925,7 @@ ISR21_30:   CMP     AH,030h
 ISR21_3D:   CMP     AH,03DH
             JNE     ISR21_40
 
-            JMP     ISR21_RET                   ; Just return
+            JMP     strict near ISR21_RET	; Just return
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2947,7 +2942,7 @@ NEXT40W:    LODSB                               ; AL=DS:[SI++]
             CALL    TXCHAR                      ; Write to UART
             LOOP    NEXT40W                     
                       
-            JMP     ISR21_RET
+            JMP     strict near ISR21_RET
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
@@ -2957,19 +2952,19 @@ NEXT40W:    LODSB                               ; AL=DS:[SI++]
 ISR21_4A:   CMP     AH,04AH
             JNE     ISR21_4C
 
-            JMP     ISR21_RET                   ; Just return
+            JMP     strict near ISR21_RET	; Just return
 
 ;----------------------------------------------------------------------
 ; Interrupt 21h                                           
 ; Service   4Ch  exit to bootloader                                                                 
 ;----------------------------------------------------------------------
 ISR21_4C:   CMP     AH,04CH
-            JNE     ISR21_x
+            JNE     ISR21_X
             MOV     BL,AL                       ; Save exit code
 
             MOV     AX,CS
             MOV     DS,AX
-            MOV     SI,OFFSET TERM_MESS                 
+            MOV     SI,TERM_MESS                 
             CALL    PUTS
             MOV     AL,BL
             CALL    PUTHEX2
@@ -2980,11 +2975,11 @@ ISR21_4C:   CMP     AH,04CH
 ; Interrupt 21h                                           
 ; Service   xx   Unkown service, display message int and ah value, return to monitor 
 ;----------------------------------------------------------------------
-isr21_x:    MOV     AL,21h
+ISR21_X:    MOV     AL,21h
             CALL    DISPSERI                        ; Display Int and service number
             JMP     INITMON                         ; Jump back to monitor
 
-isr21_ret:  POP     SI
+ISR21_RET:  POP     SI
             POP     ES
             POP     DS
             IRET
@@ -2996,7 +2991,7 @@ isr21_ret:  POP     SI
 DISPSERI:   MOV     BX,AX                           ; Store int number (AL) and service (AH)
             MOV     AX,CS
             MOV     DS,AX
-            MOV     SI,OFFSET UNKNOWNSER_MESS       ; Print Error: Unknown Service
+            MOV     SI,UNKNOWNSER_MESS       ; Print Error: Unknown Service
             CALL    PUTS
             MOV     AL,BL
             CALL    PUTHEX2                         ; Print Interrupt Number
@@ -3015,7 +3010,7 @@ INTX:       PUSH    DS
             
             MOV     AX,CS                           ; If AH/=0 print message and exit
             MOV     DS,AX
-            MOV     SI,OFFSET UNKNOWN_MESS          ; Print Error: Unknown Service
+            MOV     SI,UNKNOWN_MESS          ; Print Error: Unknown Service
             CALL    PUTS
             
             POP     AX
@@ -3757,302 +3752,298 @@ L$468:
 L$469:
     DB  28H, 6eH, 75H, 6cH, 6cH, 29H, 0
 
-CONST       ENDS
-CONST2      SEGMENT WORD PUBLIC USE16 'DATA'
-CONST2      ENDS
-_DATA       SEGMENT WORD PUBLIC USE16 'DATA'
 _opnames:
-    DW  offset L$113
-    DW  offset L$114
-    DW  offset L$115
-    DW  offset L$116
-    DW  offset L$117
-    DW  offset L$118
-    DW  offset L$119
-    DW  offset L$120
-    DW  offset L$121
-    DW  offset L$122
-    DW  offset L$123
-    DW  offset L$124
-    DW  offset L$125
-    DW  offset L$126
-    DW  offset L$127
-    DW  offset L$128
-    DW  offset L$129
-    DW  offset L$130
-    DW  offset L$131
-    DW  offset L$132
-    DW  offset L$133
-    DW  offset L$134
-    DW  offset L$135
-    DW  offset L$136
-    DW  offset L$137
-    DW  offset L$138
-    DW  offset L$139
-    DW  offset L$140
-    DW  offset L$141
-    DW  offset L$142
-    DW  offset L$143
-    DW  offset L$144
-    DW  offset L$145
-    DW  offset L$146
-    DW  offset L$147
-    DW  offset L$148
-    DW  offset L$149
-    DW  offset L$150
-    DW  offset L$151
-    DW  offset L$152
-    DW  offset L$153
-    DW  offset L$154
-    DW  offset L$155
-    DW  offset L$156
-    DW  offset L$157
-    DW  offset L$158
-    DW  offset L$159
-    DW  offset L$160
-    DW  offset L$161
-    DW  offset L$162
-    DW  offset L$163
-    DW  offset L$164
-    DW  offset L$165
-    DW  offset L$166
-    DW  offset L$167
-    DW  offset L$168
-    DW  offset L$169
-    DW  offset L$170
-    DW  offset L$171
-    DW  offset L$172
-    DW  offset L$173
-    DW  offset L$174
-    DW  offset L$175
-    DW  offset L$176
-    DW  offset L$177
-    DW  offset L$178
-    DW  offset L$179
-    DW  offset L$180
-    DW  offset L$181
-    DW  offset L$182
-    DW  offset L$183
-    DW  offset L$184
-    DW  offset L$185
-    DW  offset L$186
-    DW  offset L$187
-    DW  offset L$188
-    DW  offset L$189
-    DW  offset L$190
-    DW  offset L$191
-    DW  offset L$192
-    DW  offset L$193
-    DW  offset L$194
-    DW  offset L$195
-    DW  offset L$196
-    DW  offset L$197
-    DW  offset L$198
-    DW  offset L$199
-    DW  offset L$200
-    DW  offset L$201
-    DW  offset L$202
-    DW  offset L$203
-    DW  offset L$204
-    DW  offset L$205
-    DW  offset L$206
-    DW  offset L$207
-    DW  offset L$208
-    DW  offset L$209
-    DW  offset L$210
-    DW  offset L$211
-    DW  offset L$212
-    DW  offset L$213
-    DW  offset L$214
-    DW  offset L$215
-    DW  offset L$216
-    DW  offset L$217
-    DW  offset L$218
-    DW  offset L$219
-    DW  offset L$220
-    DW  offset L$221
-    DW  offset L$222
-    DW  offset L$223
-    DW  offset L$224
-    DW  offset L$225
-    DW  offset L$226
-    DW  offset L$227
-    DW  offset L$228
-    DW  offset L$229
-    DW  offset L$230
-    DW  offset L$231
-    DW  offset L$232
-    DW  offset L$233
-    DW  offset L$234
-    DW  offset L$235
-    DW  offset L$236
-    DW  offset L$237
-    DW  offset L$238
-    DW  offset L$239
-    DW  offset L$240
-    DW  offset L$241
-    DW  offset L$242
-    DW  offset L$243
-    DW  offset L$244
-    DW  offset L$245
-    DW  offset L$246
-    DW  offset L$247
-    DW  offset L$248
-    DW  offset L$249
-    DW  offset L$250
-    DW  offset L$251
-    DW  offset L$252
-    DW  offset L$253
-    DW  offset L$254
-    DW  offset L$255
-    DW  offset L$256
-    DW  offset L$257
-    DW  offset L$258
-    DW  offset L$259
-    DW  offset L$260
-    DW  offset L$261
-    DW  offset L$262
-    DW  offset L$263
-    DW  offset L$264
-    DW  offset L$265
-    DW  offset L$266
-    DW  offset L$267
-    DW  offset L$268
-    DW  offset L$269
-    DW  offset L$270
-    DW  offset L$271
-    DW  offset L$272
-    DW  offset L$273
-    DW  offset L$274
-    DW  offset L$275
-    DW  offset L$276
-    DW  offset L$277
-    DW  offset L$278
-    DW  offset L$279
-    DW  offset L$280
-    DW  offset L$281
-    DW  offset L$282
-    DW  offset L$283
-    DW  offset L$284
-    DW  offset L$285
-    DW  offset L$286
-    DW  offset L$287
-    DW  offset L$288
-    DW  offset L$289
-    DW  offset L$290
-    DW  offset L$291
-    DW  offset L$292
-    DW  offset L$293
-    DW  offset L$294
-    DW  offset L$295
-    DW  offset L$296
-    DW  offset L$297
-    DW  offset L$298
-    DW  offset L$299
-    DW  offset L$300
-    DW  offset L$301
-    DW  offset L$302
-    DW  offset L$303
-    DW  offset L$304
-    DW  offset L$305
-    DW  offset L$306
-    DW  offset L$307
-    DW  offset L$308
-    DW  offset L$309
-    DW  offset L$310
-    DW  offset L$311
-    DW  offset L$312
-    DW  offset L$313
-    DW  offset L$314
-    DW  offset L$315
-    DW  offset L$316
-    DW  offset L$317
-    DW  offset L$318
-    DW  offset L$319
-    DW  offset L$320
-    DW  offset L$321
-    DW  offset L$322
-    DW  offset L$323
-    DW  offset L$324
-    DW  offset L$325
-    DW  offset L$326
-    DW  offset L$327
-    DW  offset L$328
+    DW  L$113
+    DW  L$114
+    DW  L$115
+    DW  L$116
+    DW  L$117
+    DW  L$118
+    DW  L$119
+    DW  L$120
+    DW  L$121
+    DW  L$122
+    DW  L$123
+    DW  L$124
+    DW  L$125
+    DW  L$126
+    DW  L$127
+    DW  L$128
+    DW  L$129
+    DW  L$130
+    DW  L$131
+    DW  L$132
+    DW  L$133
+    DW  L$134
+    DW  L$135
+    DW  L$136
+    DW  L$137
+    DW  L$138
+    DW  L$139
+    DW  L$140
+    DW  L$141
+    DW  L$142
+    DW  L$143
+    DW  L$144
+    DW  L$145
+    DW  L$146
+    DW  L$147
+    DW  L$148
+    DW  L$149
+    DW  L$150
+    DW  L$151
+    DW  L$152
+    DW  L$153
+    DW  L$154
+    DW  L$155
+    DW  L$156
+    DW  L$157
+    DW  L$158
+    DW  L$159
+    DW  L$160
+    DW  L$161
+    DW  L$162
+    DW  L$163
+    DW  L$164
+    DW  L$165
+    DW  L$166
+    DW  L$167
+    DW  L$168
+    DW  L$169
+    DW  L$170
+    DW  L$171
+    DW  L$172
+    DW  L$173
+    DW  L$174
+    DW  L$175
+    DW  L$176
+    DW  L$177
+    DW  L$178
+    DW  L$179
+    DW  L$180
+    DW  L$181
+    DW  L$182
+    DW  L$183
+    DW  L$184
+    DW  L$185
+    DW  L$186
+    DW  L$187
+    DW  L$188
+    DW  L$189
+    DW  L$190
+    DW  L$191
+    DW  L$192
+    DW  L$193
+    DW  L$194
+    DW  L$195
+    DW  L$196
+    DW  L$197
+    DW  L$198
+    DW  L$199
+    DW  L$200
+    DW  L$201
+    DW  L$202
+    DW  L$203
+    DW  L$204
+    DW  L$205
+    DW  L$206
+    DW  L$207
+    DW  L$208
+    DW  L$209
+    DW  L$210
+    DW  L$211
+    DW  L$212
+    DW  L$213
+    DW  L$214
+    DW  L$215
+    DW  L$216
+    DW  L$217
+    DW  L$218
+    DW  L$219
+    DW  L$220
+    DW  L$221
+    DW  L$222
+    DW  L$223
+    DW  L$224
+    DW  L$225
+    DW  L$226
+    DW  L$227
+    DW  L$228
+    DW  L$229
+    DW  L$230
+    DW  L$231
+    DW  L$232
+    DW  L$233
+    DW  L$234
+    DW  L$235
+    DW  L$236
+    DW  L$237
+    DW  L$238
+    DW  L$239
+    DW  L$240
+    DW  L$241
+    DW  L$242
+    DW  L$243
+    DW  L$244
+    DW  L$245
+    DW  L$246
+    DW  L$247
+    DW  L$248
+    DW  L$249
+    DW  L$250
+    DW  L$251
+    DW  L$252
+    DW  L$253
+    DW  L$254
+    DW  L$255
+    DW  L$256
+    DW  L$257
+    DW  L$258
+    DW  L$259
+    DW  L$260
+    DW  L$261
+    DW  L$262
+    DW  L$263
+    DW  L$264
+    DW  L$265
+    DW  L$266
+    DW  L$267
+    DW  L$268
+    DW  L$269
+    DW  L$270
+    DW  L$271
+    DW  L$272
+    DW  L$273
+    DW  L$274
+    DW  L$275
+    DW  L$276
+    DW  L$277
+    DW  L$278
+    DW  L$279
+    DW  L$280
+    DW  L$281
+    DW  L$282
+    DW  L$283
+    DW  L$284
+    DW  L$285
+    DW  L$286
+    DW  L$287
+    DW  L$288
+    DW  L$289
+    DW  L$290
+    DW  L$291
+    DW  L$292
+    DW  L$293
+    DW  L$294
+    DW  L$295
+    DW  L$296
+    DW  L$297
+    DW  L$298
+    DW  L$299
+    DW  L$300
+    DW  L$301
+    DW  L$302
+    DW  L$303
+    DW  L$304
+    DW  L$305
+    DW  L$306
+    DW  L$307
+    DW  L$308
+    DW  L$309
+    DW  L$310
+    DW  L$311
+    DW  L$312
+    DW  L$313
+    DW  L$314
+    DW  L$315
+    DW  L$316
+    DW  L$317
+    DW  L$318
+    DW  L$319
+    DW  L$320
+    DW  L$321
+    DW  L$322
+    DW  L$323
+    DW  L$324
+    DW  L$325
+    DW  L$326
+    DW  L$327
+    DW  L$328
 _coproc_names:
-    DW  offset L$113
-    DW  offset L$329
-    DW  offset L$330
-    DW  offset L$331
-    DW  offset L$332
-    DW  offset L$333
-    DW  offset L$334
-    DW  offset L$335
-    DW  offset L$336
-    DW  offset L$337
-    DW  offset L$338
-    DW  offset L$339
-    DW  offset L$340
-    DW  offset L$341
-    DW  offset L$342
-    DW  offset L$343
-    DW  offset L$344
-    DW  offset L$345
-    DW  offset L$346
-    DW  offset L$347
-    DW  offset L$348
-    DW  offset L$349
-    DW  offset L$350
-    DW  offset L$351
-    DW  offset L$352
-    DW  offset L$353
-    DW  offset L$354
-    DW  offset L$355
-    DW  offset L$356
-    DW  offset L$357
-    DW  offset L$358
-    DW  offset L$359
-    DW  offset L$360
-    DW  offset L$361
-    DW  offset L$362
-    DW  offset L$363
-    DW  offset L$364
-    DW  offset L$365
-    DW  offset L$366
-    DW  offset L$367
-    DW  offset L$368
-    DW  offset L$369
-    DW  offset L$370
-    DW  offset L$371
-    DW  offset L$372
-    DW  offset L$373
-    DW  offset L$374
-    DW  offset L$375
-    DW  offset L$376
-    DW  offset L$377
-    DW  offset L$378
-    DW  offset L$379
-    DW  offset L$380
-    DW  offset L$381
-    DW  offset L$382
-    DW  offset L$383
-    DW  offset L$384
-    DW  offset L$385
-    DW  offset L$386
-    DW  offset L$387
-    DW  offset L$388
-    DW  offset L$389
-    DW  offset L$390
-    DW  offset L$391
-    DW  offset L$392
-    DW  offset L$393
-    DW  offset L$394
-    DW  offset L$395
-    DW  offset L$396
-    DW  offset L$397
-    DW  offset L$398
-    DW  offset L$399
-    DW  offset L$400
-    DW  offset L$401
+    DW  L$113
+    DW  L$329
+    DW  L$330
+    DW  L$331
+    DW  L$332
+    DW  L$333
+    DW  L$334
+    DW  L$335
+    DW  L$336
+    DW  L$337
+    DW  L$338
+    DW  L$339
+    DW  L$340
+    DW  L$341
+    DW  L$342
+    DW  L$343
+    DW  L$344
+    DW  L$345
+    DW  L$346
+    DW  L$347
+    DW  L$348
+    DW  L$349
+    DW  L$350
+    DW  L$351
+    DW  L$352
+    DW  L$353
+    DW  L$354
+    DW  L$355
+    DW  L$356
+    DW  L$357
+    DW  L$358
+    DW  L$359
+    DW  L$360
+    DW  L$361
+    DW  L$362
+    DW  L$363
+    DW  L$364
+    DW  L$365
+    DW  L$366
+    DW  L$367
+    DW  L$368
+    DW  L$369
+    DW  L$370
+    DW  L$371
+    DW  L$372
+    DW  L$373
+    DW  L$374
+    DW  L$375
+    DW  L$376
+    DW  L$377
+    DW  L$378
+    DW  L$379
+    DW  L$380
+    DW  L$381
+    DW  L$382
+    DW  L$383
+    DW  L$384
+    DW  L$385
+    DW  L$386
+    DW  L$387
+    DW  L$388
+    DW  L$389
+    DW  L$390
+    DW  L$391
+    DW  L$392
+    DW  L$393
+    DW  L$394
+    DW  L$395
+    DW  L$396
+    DW  L$397
+    DW  L$398
+    DW  L$399
+    DW  L$400
+    DW  L$401
 _opcode1:
     DB  6, 2, 2fH, 33H, 0, 0, 0, 10H
     DB  6, 2, 30H, 34H, 0, 0, 0, 10H
@@ -4456,85 +4447,85 @@ _opcodeg:
     DB  0, 0, 0, 0, 0, 0, 0, 80H
     DB  0, 0, 0, 0, 0, 0, 0, 80H
 _seg_regs:
-    DW  offset L$402
-    DW  offset L$403
-    DW  offset L$404
-    DW  offset L$405
-    DW  offset L$406
-    DW  offset L$407
-    DW  offset L$408
-    DW  offset L$408
+    DW  L$402
+    DW  L$403
+    DW  L$404
+    DW  L$405
+    DW  L$406
+    DW  L$407
+    DW  L$408
+    DW  L$408
 _ea_scale:
-    DW  offset L$113
-    DW  offset L$409
-    DW  offset L$410
-    DW  offset L$411
+    DW  L$113
+    DW  L$409
+    DW  L$410
+    DW  L$411
 _ea_modes:
-    DW  offset L$412
-    DW  offset L$413
-    DW  offset L$414
-    DW  offset L$415
-    DW  offset L$416
-    DW  offset L$417
-    DW  offset L$418
-    DW  offset L$419
+    DW  L$412
+    DW  L$413
+    DW  L$414
+    DW  L$415
+    DW  L$416
+    DW  L$417
+    DW  L$418
+    DW  L$419
 _ea_regs:
-    DW  offset L$420
-    DW  offset L$421
-    DW  offset L$422
-    DW  offset L$423
-    DW  offset L$424
-    DW  offset L$425
-    DW  offset L$426
-    DW  offset L$427
-    DW  offset L$428
-    DW  offset L$429
-    DW  offset L$430
-    DW  offset L$419
-    DW  offset L$431
-    DW  offset L$418
-    DW  offset L$416
-    DW  offset L$417
+    DW  L$420
+    DW  L$421
+    DW  L$422
+    DW  L$423
+    DW  L$424
+    DW  L$425
+    DW  L$426
+    DW  L$427
+    DW  L$428
+    DW  L$429
+    DW  L$430
+    DW  L$419
+    DW  L$431
+    DW  L$418
+    DW  L$416
+    DW  L$417
 _direct_regs:
-    DW  offset L$430
-    DW  offset L$420
-    DW  offset L$424
-    DW  offset L$423
-    DW  offset L$427
-    DW  offset L$421
-    DW  offset L$425
-    DW  offset L$422
-    DW  offset L$426
-    DW  offset L$403
-    DW  offset L$405
-    DW  offset L$402
-    DW  offset L$404
-    DW  offset L$406
-    DW  offset L$407
+    DW  L$430
+    DW  L$420
+    DW  L$424
+    DW  L$423
+    DW  L$427
+    DW  L$421
+    DW  L$425
+    DW  L$422
+    DW  L$426
+    DW  L$403
+    DW  L$405
+    DW  L$402
+    DW  L$404
+    DW  L$406
+    DW  L$407
 _cntrl_regs:
-    DW  offset L$432
-    DW  offset L$433
-    DW  offset L$434
-    DW  offset L$435
-    DW  offset L$436
-    DW  offset L$408
-    DW  offset L$408
-    DW  offset L$408
+    DW  L$432
+    DW  L$433
+    DW  L$434
+    DW  L$435
+    DW  L$436
+    DW  L$408
+    DW  L$408
+    DW  L$408
 _debug_regs:
-    DW  offset L$437
-    DW  offset L$438
-    DW  offset L$439
-    DW  offset L$440
-    DW  offset L$441
-    DW  offset L$442
-    DW  offset L$443
-    DW  offset L$444
+    DW  L$437
+    DW  L$438
+    DW  L$439
+    DW  L$440
+    DW  L$441
+    DW  L$442
+    DW  L$443
+    DW  L$444
 _esdi_regs:
-    DW  offset L$445
-    DW  offset L$446
+    DW  L$445
+    DW  L$446
 _dssi_regs:
-    DW  offset L$447
-    DW  offset L$448
+    DW  L$447
+    DW  L$448
 _inpfp:
     DB  0, 0
 
@@ -4590,8 +4581,8 @@ UNKNOWNSER_MESS DB  CR,LF,"*** ERROR: Unknown Service INT,AH=",0
 ;----------------------------------------------------------------------
 ; Disassembler string storage
 ;----------------------------------------------------------------------
-DISASM_INST DB  48 DUP ?                        ; Stored Disassemble string
-DISASM_CODE DB  32 DUP ?                        ; Stored Disassemble Opcode 
+DISASM_INST times 48 db 0			; Stored Disassemble string
+DISASM_CODE times 32 db 0			; Stored Disassemble Opcode 
                     
 ;----------------------------------------------------------------------
 ; Save Register values
@@ -4611,7 +4602,7 @@ UCS         DW      BASE_SEGMENT                ; CS
 UIP         DW      0100h                       ; IP
 UFL         DW      0F03Ah                      ; flags
 
-DUMPMEMS    DB  16 DUP ?                        ; Stored memdump read values
+DUMPMEMS    times 16 db 0			; Stored memdump read values
 
-            DB      256 DUP ?                   ; Reserve 256 bytes for the stack
-TOS         DW      ?                           ; Top of stack
+            times 256 db 0			; Reserve 256 bytes for the stack
+TOS         dw 0				; Top of stack
