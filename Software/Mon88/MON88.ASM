@@ -257,6 +257,7 @@ NEXTCMD2:   ADD     BX,4
             CALL    PUTS                        
             JMP     CMD                         ; Try again 
 
+		align 2, db 0
 CMDTAB1     DW      'L',LOADHEX                 ; Single char Command Jump Table         
             DW      'R',DISPREG   
             DW      'G',EXECPROG
@@ -269,6 +270,7 @@ CMDTAB1     DW      'L',LOADHEX                 ; Single char Command Jump Table
             DW      CR ,CMD
 ENDTAB1     DW      ' '
 
+		align 2, db 0
 CMDTAB2     DW      'MF',FILLMEM                ; Double char Command Jump Table
             DW      'MD',DUMPMEM            
             DW      'PB',SETBREAKP              ; Set Breakpoint
@@ -485,6 +487,7 @@ NEXTREG:    ADD     BX,4
 
             JMP     CMD                         ; Try Again 
 
+		align 2, db 0
 REGTAB      DW      'XA',0                      ; register name, offset
             DW      'XB',2                  
             DW      'XC',4                  
@@ -1040,6 +1043,8 @@ L$4:
     pop         di
     pop         si
     ret         2
+
+		align 2, db 0
 L$5:
     DW  L$16
     DW  L$18
@@ -2553,6 +2558,7 @@ ISR1A_00:   CMP     AH,00h
             
             JMP     ISR1A_RET	; exit
 
+		align 2, db 0
 TEMP1       DW      0
 TEMP2       DW      0                           
 
@@ -3752,6 +3758,7 @@ L$468:
 L$469:
     DB  28H, 6eH, 75H, 6cH, 6cH, 29H, 0
 
+		align 2, db 0
 _opnames:
     DW  L$113
     DW  L$114
@@ -4446,6 +4453,8 @@ _opcodeg:
     DB  0, 0, 0, 0, 0, 0, 0, 80H
     DB  0, 0, 0, 0, 0, 0, 0, 80H
     DB  0, 0, 0, 0, 0, 0, 0, 80H
+
+		align 2, db 0
 _seg_regs:
     DW  L$402
     DW  L$403
@@ -4578,12 +4587,15 @@ HELP_MESS       DB  CR,LF,"Commands"
 UNKNOWN_MESS    DB  CR,LF,"*** ERROR: Spurious Interrupt ",0
 UNKNOWNSER_MESS DB  CR,LF,"*** ERROR: Unknown Service INT,AH=",0
 
+
+		align 2, db 0
 ;----------------------------------------------------------------------
 ; Disassembler string storage
 ;----------------------------------------------------------------------
 DISASM_INST times 48 db 0			; Stored Disassemble string
 DISASM_CODE times 32 db 0			; Stored Disassemble Opcode 
-                    
+
+		align 2, db 0
 ;----------------------------------------------------------------------
 ; Save Register values
 ;----------------------------------------------------------------------
@@ -4605,4 +4617,5 @@ UFL         DW      0F03Ah                      ; flags
 DUMPMEMS    times 16 db 0			; Stored memdump read values
 
             times 256 db 0			; Reserve 256 bytes for the stack
+		align 2, db 0
 TOS         dw 0				; Top of stack
