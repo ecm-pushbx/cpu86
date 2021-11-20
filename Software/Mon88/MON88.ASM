@@ -128,8 +128,8 @@ BASE_SEGMENT    EQU  0380h
     CALL    TXCHAR
 %endmacro
 
-		org 100h
-		times 300h nop
+		org 0
+		times 400h db 0
             ; ORG     0400h                     ; First 1024 bytes used for int vectors
 
 INITMON:    CLI
