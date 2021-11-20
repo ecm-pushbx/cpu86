@@ -150,7 +150,16 @@ INITMON:    CLI
 ;----------------------------------------------------------------------
 ; Set baudrate for 16550
 ;----------------------------------------------------------------------
-INITCOM:    MOV     AL,080h                     ; Init 16550, DLAB=1
+INITCOM:
+		; Upon initialisation, the last byte written to
+		;  the serial port was lost. Therefore we need to
+		;  wait here until the byte is sent.
+            MOV     DX,LSR                      ; Read Line Status Register
+.WAITTX:    IN      AL,DX
+            AND     AL,THRE                     ; Transmit Holding Register Empty?
+            JZ      .WAITTX                     ; no, wait
+
+            MOV     AL,080h                     ; Init 16550, DLAB=1
             MOV     DX,LCR
             OUT     DX,AL
                             
