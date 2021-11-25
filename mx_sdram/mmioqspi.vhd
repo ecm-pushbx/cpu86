@@ -7,7 +7,17 @@ library ieee;
 use ieee.std_logic_1164.ALL;
 
 entity mmio_qspi is
-   port(abus   : in  std_logic_vector(3 downto 0);
+   port(
+		  wb_cyc	: out std_logic;
+		  wb_stb	: out std_logic;
+		  cfg_stb: out std_logic;
+		  wb_we	: out std_logic;
+		  wb_addr: out std_logic_vector(21 downto 0);
+		  i_wb_data		: out std_logic_vector(31 downto 0);
+		  wb_stall		: in std_logic;
+		  wb_ack			: in std_logic;
+		  o_wb_data		: in std_logic_vector(31 downto 0);
+		  abus   : in  std_logic_vector(3 downto 0);
 		  clock	: in STD_LOGIC := '1';
 		  data	: in STD_LOGIC_VECTOR(7 DOWNTO 0);
 		  wren	: in STD_LOGIC;

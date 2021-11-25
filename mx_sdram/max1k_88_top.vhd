@@ -243,6 +243,15 @@ pll0: entity work.pll12to40 PORT MAP (
 	);
 	wrmmioqspi <= not wrn and not csmmioqspin;
 	mmioqspi0:		ENTITY work.mmio_qspi PORT map(
+		wb_cyc	=> qspi_cyc,
+		wb_stb	=> qspi_stb,
+		cfg_stb	=> qspi_cfg_stb,
+		wb_we		=> qspi_we,
+		wb_addr	=> qspi_addr,
+		i_wb_data=> qspi_i_data,
+		wb_stall	=> qspi_stall,
+		wb_ack	=> qspi_ack,
+		o_wb_data=> qspi_o_data,
 		abus		=> abus(3 downto 0),
 		clock		=> clk40,
 		data		=> dbus_out,
