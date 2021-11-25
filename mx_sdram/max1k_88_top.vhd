@@ -19,11 +19,34 @@ entity max1k_88_top is
 		SDRAM_DQM								: out		std_logic_vector(1 downto 0);
 		SDRAM_RASn								: out		std_logic;
 		SDRAM_WEn								: out		std_logic;
-		SDRAM_CLK								: out		std_logic
+		SDRAM_CLK								: out		std_logic;
+		TOPQSPI_CS_N							: out		std_logic;
+		TOPQSPI_SCK								: out		std_logic;
+		TOPQSPI_DAT								: inout 	std_logic_vector(3 downto 0)
     );
 end entity;
 
 architecture behavioral of max1k_88_top is
+
+component qflexpress port (
+		i_clk			: in std_logic;
+		i_reset		: in std_logic;
+		i_wb_cyc		: in std_logic;
+		i_wb_stb		: in std_logic;
+		i_cfg_stb	: in std_logic;
+		i_wb_we		: in std_logic;
+		i_wb_addr	: in std_logic_vector(21 downto 0);
+		i_wb_data	: in std_logic_vector(31 downto 0);
+		o_wb_stall	: out std_logic;
+		o_wb_ack		: out std_logic;
+		o_wb_data	: out std_logic_vector(31 downto 0);
+		o_qspi_sck	: out std_logic;
+		o_qspi_cs_n	: out std_logic;
+		o_qspi_mod	: out std_logic_vector(1 downto 0);
+		o_qspi_dat	: out std_logic_vector(3 downto 0);
+		i_qspi_dat	: in std_logic_vector(3 downto 0)
+);
+end component;
 
 COMPONENT NIOS_sdram_controller_0
 	PORT
@@ -50,6 +73,27 @@ COMPONENT NIOS_sdram_controller_0
 		zs_we_n		:	 OUT STD_LOGIC
 	);
 END COMPONENT;
+
+signal o_qspi_cs_n	: std_logic;
+signal o_qspi_sck		: std_logic;
+signal io_qspi_dat	: std_logic_vector(3 downto 0);
+signal w_qspi_sck		: std_logic;
+signal w_qspi_cs_n	: std_logic;
+signal qspi_bmod		: std_logic_vector(1 downto 0);
+signal qspi_dat		: std_logic_vector(3 downto 0);
+signal i_qspi_dat		: std_logic_vector(3 downto 0);
+signal i_qspi_pedge	: std_logic_vector(3 downto 0);
+signal i_qspi_nedge	: std_logic_vector(3 downto 0);
+
+signal qspi_cyc		: std_logic := '0';
+signal qspi_stb		: std_logic := '0';
+signal qspi_cfg_stb	: std_logic := '0';
+signal qspi_we			: std_logic := '0';
+signal qspi_addr		: std_logic_vector(21 downto 0);
+signal qspi_i_data	: std_logic_vector(31 downto 0);
+signal qspi_o_data	: std_logic_vector(31 downto 0);
+signal qspi_stall		: std_logic := '0';
+signal qspi_ack		: std_logic := '0';
 
 signal clk40 : std_logic;
 signal dbus_in  : std_logic_vector (7 DOWNTO 0);
@@ -106,9 +150,26 @@ signal az_rd_n : std_logic;
 signal az_wr_n : std_logic;
 signal clk_int80 : std_logic;
 signal reset_n : std_logic;
+signal reset : std_logic;
 	signal	pll_sys_locked					: std_logic;
 
+function tern(cond : boolean; res_true, res_false : std_logic_vector) return std_logic_vector is
 begin
+  if cond then
+    return res_true;
+  else
+    return res_false;
+  end if;
+end function;
+
+begin
+
+reset <= not reset_n;
+qspi_dat <= tern(qspi_bmod(1) = '0', "11" & "Z" & qspi_dat(0), tern(qspi_bmod(0) = '1', "ZZZZ", qspi_dat(3 downto 0)));
+-- qspi_dat <= ("11" & "Z" & qspi_dat(0)) when not qspi_bmod(1) else
+-- 				(("ZZZZ") when qspi_bmod(0) else qspi_dat(3 downto 0));
+o_qspi_cs_n <= w_qspi_cs_n;
+
 --	 clk40 <= CLK12M;
 --clk40/baudrate static SDRAM access status :
 --1M/960		: 80cyc80=GOOD
@@ -294,5 +355,25 @@ pll0: entity work.pll12to40 PORT MAP (
 
 	SDRAM_ADDR(13) <= '0';																				-- comment this line, if the full address width of 14 bits is required
 	SDRAM_ADDR(12) <= '0';																				-- comment this line, if the full address width of 14 bits is required
+
+
+qspi : qflexpress port map (
+		i_clk			=> clk40,
+		i_reset		=> reset,
+		i_wb_cyc		=> qspi_cyc,
+		i_wb_stb		=> qspi_stb,
+		i_cfg_stb	=> qspi_cfg_stb,
+		i_wb_we		=> qspi_we,
+		i_wb_addr	=> qspi_addr,
+		i_wb_data	=> qspi_i_data,
+		o_wb_stall	=> qspi_stall,
+		o_wb_ack		=> qspi_ack,
+		o_wb_data	=> qspi_o_data,
+		o_qspi_sck	=> TOPQSPI_SCK,
+		o_qspi_cs_n	=> TOPQSPI_CS_N,
+		o_qspi_mod	=> qspi_bmod,
+		o_qspi_dat	=> qspi_dat,
+		i_qspi_dat	=> i_qspi_dat
+);
 
 end architecture;

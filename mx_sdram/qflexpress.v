@@ -98,7 +98,7 @@ module	qflexpress #(
 		// Control this by controlling the LGFLASHSZ parameter above.
 		// Anything greater than 24 will use 32-bit addressing,
 		// otherwise the regular 24-bit addressing
-		localparam [0:0]	OPT_ADDR32 = (LGFLASHSZ > 24),
+		parameter [0:0]	OPT_ADDR32 = (LGFLASHSZ > 24),
 		// }}}
 		//
 		parameter	OPT_CLKDIV = 0,
@@ -118,13 +118,13 @@ module	qflexpress #(
 		// {{{
 		// OPT_ODDR will be true any time the clock has no clock
 		// division
-		localparam [0:0]	OPT_ODDR = (OPT_CLKDIV == 0),
+		parameter [0:0]	OPT_ODDR = (OPT_CLKDIV == 0),
 		// }}}
 		// CKDV_BITS
 		// {{{
 		// CKDV_BITS is the number of bits necessary to represent a
 		// counter that can do the CLKDIV division
-		localparam 	CKDV_BITS = (OPT_CLKDIV == 0) ? 0
+		parameter 	CKDV_BITS = (OPT_CLKDIV == 0) ? 0
 					: ((OPT_CLKDIV <   2) ? 1
 					: ((OPT_CLKDIV <   4) ? 2
 					: ((OPT_CLKDIV <   8) ? 3
@@ -164,22 +164,22 @@ module	qflexpress #(
 		// }}}
 		//
 		//
-		localparam [4:0]	CFG_MODE =	12,
-		localparam [4:0]	QSPEED_BIT = 	11,
-		localparam [4:0]	DSPEED_BIT = 	10, // Not supported
-		localparam [4:0]	DIR_BIT	= 	 9,
-		localparam [4:0]	USER_CS_n = 	 8,
+		parameter [4:0]	CFG_MODE =	12,
+		parameter [4:0]	QSPEED_BIT = 	11,
+		parameter [4:0]	DSPEED_BIT = 	10, // Not supported
+		parameter [4:0]	DIR_BIT	= 	 9,
+		parameter [4:0]	USER_CS_n = 	 8,
 		//
-		localparam [1:0]	NORMAL_SPI = 	2'b00,
-		localparam [1:0]	QUAD_WRITE = 	2'b10,
-		localparam [1:0]	QUAD_READ = 	2'b11,
-		// localparam [7:0] DIO_READ_CMD = 8'hbb,
-		localparam [7:0] QIO_READ_CMD = OPT_ADDR32 ? 8'hec : 8'heb,
+		parameter [1:0]	NORMAL_SPI = 	2'b00,
+		parameter [1:0]	QUAD_WRITE = 	2'b10,
+		parameter [1:0]	QUAD_READ = 	2'b11,
+		// parameter [7:0] DIO_READ_CMD = 8'hbb,
+		parameter [7:0] QIO_READ_CMD = OPT_ADDR32 ? 8'hec : 8'heb,
 		//
-		localparam	AW=LGFLASHSZ-2,
-		localparam	DW=32,
+		parameter	AW=LGFLASHSZ-2,
+		parameter	DW=32
 `ifdef	FORMAL
-		, localparam	F_LGDEPTH=$clog2(3+RDDELAY+(OPT_ADDR32 ? 2:0))
+		, parameter	F_LGDEPTH=$clog2(3+RDDELAY+(OPT_ADDR32 ? 2:0))
 `endif
 		// }}}
 	) (
@@ -357,13 +357,13 @@ module	qflexpress #(
 		// {{{
 		// Signal declarations
 		// {{{
-		localparam	M_WAITBIT=10;
-		localparam	M_LGADDR=5;
+		parameter	M_WAITBIT=10;
+		parameter	M_LGADDR=5;
 `ifdef	FORMAL
 		// For formal, jump into the middle of the startup
-		localparam	M_FIRSTIDX=9;
+		parameter	M_FIRSTIDX=9;
 `else
-		localparam	M_FIRSTIDX=0;
+		parameter	M_FIRSTIDX=0;
 `endif
 		reg	[M_WAITBIT:0]	m_this_word;
 		reg	[M_WAITBIT:0]	m_cmd_word	[0:(1<<M_LGADDR)-1];
@@ -1382,15 +1382,15 @@ module	qflexpress #(
 `ifdef	FORMAL
 	// Signal declarations
 	// {{{
-	localparam	F_MEMDONE   = NDUMMY+6+8+(OPT_ADDR32 ? 2:0)+(OPT_ODDR ? 0:1);
-	localparam	F_MEMACK    = F_MEMDONE + RDDELAY;
-	localparam	F_PIPEDONE  = 8;
-	localparam	F_PIPEACK   = F_PIPEDONE + RDDELAY;
-	localparam	F_CFGLSDONE = 8+(OPT_ODDR ? 0:1);
-	localparam	F_CFGLSACK  = F_CFGLSDONE + RDDELAY;
-	localparam	F_CFGHSDONE = 2+(OPT_ODDR ? 0:1);
-	localparam	F_CFGHSACK  = RDDELAY+F_CFGHSDONE;
-	localparam	F_ACKCOUNT = (15+NDUMMY+RDDELAY)
+	parameter	F_MEMDONE   = NDUMMY+6+8+(OPT_ADDR32 ? 2:0)+(OPT_ODDR ? 0:1);
+	parameter	F_MEMACK    = F_MEMDONE + RDDELAY;
+	parameter	F_PIPEDONE  = 8;
+	parameter	F_PIPEACK   = F_PIPEDONE + RDDELAY;
+	parameter	F_CFGLSDONE = 8+(OPT_ODDR ? 0:1);
+	parameter	F_CFGLSACK  = F_CFGLSDONE + RDDELAY;
+	parameter	F_CFGHSDONE = 2+(OPT_ODDR ? 0:1);
+	parameter	F_CFGHSACK  = RDDELAY+F_CFGHSDONE;
+	parameter	F_ACKCOUNT = (15+NDUMMY+RDDELAY)
 				*(OPT_ODDR ? 1 : (OPT_CLKDIV+1));
 	genvar	k;
 

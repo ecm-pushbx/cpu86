@@ -70,7 +70,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LED
 set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to USER_BTN
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to CLK12M
 set_global_assignment -name VCCA_USER_VOLTAGE 3.3V
-set_global_assignment -name ENABLE_OCT_DONE ON
+set_global_assignment -name ENABLE_OCT_DONE OFF
 set_global_assignment -name STRATIXV_CONFIGURATION_SCHEME "PASSIVE SERIAL"
 set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
 set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
@@ -79,51 +79,12 @@ set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
 set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
-set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
+set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 3
 set_global_assignment -name EXTERNAL_FLASH_FALLBACK_ADDRESS 00000000
 set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE IMAGE WITH ERAM"
 set_location_assignment PIN_A4 -to RsRx
 set_location_assignment PIN_B4 -to RsTx
-set_global_assignment -name VERILOG_FILE NIOS_sdram_controller_0.v
-set_global_assignment -name VHDL_FILE ../Opencores/slib_mv_filter.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_input_sync.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_input_filter.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_fifo.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_edge_detect.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_counter.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/slib_clock_div.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/uart_transmitter.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/uart_receiver.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/uart_interrupt.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/uart_baudgen.vhd
-set_global_assignment -name VHDL_FILE ../Opencores/uart_16750.vhd
-set_global_assignment -name VHDL_FILE max1k_88_top.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86_struct.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86pack.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86instr.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/a_table.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/segregfile_rtl.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/regshiftmux_regshift.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/r_table.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/proc_rtl.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/n_table.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/multiplier_rtl.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/m_table.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/ipregister_rtl.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/formatter_struct.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/divider_rtl_ser.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/dataregfile_rtl.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/datapath_struct.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/d_table.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/biufsm_fsm.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/biu_struct.vhd
-set_global_assignment -name VHDL_FILE ../cpu86_rtl/alu_rtl.vhd
-set_global_assignment -name SDC_FILE max1k_88_top.sdc
-set_global_assignment -name VHDL_FILE ram.vhd
-set_global_assignment -name VHDL_FILE ../top_rtl/Bootstrap_rtl.vhd
-set_global_assignment -name VHDL_FILE ../top_rtl/uart_top_struct.vhd
-set_global_assignment -name QIP_FILE pll12to40.qip
 set_location_assignment PIN_M12 -to SDRAM_ADDR[13]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SDRAM_WEn -entity Max1000_Wasserwaage_SDRAM
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SDRAM_ADDR[11] -entity Max1000_Wasserwaage_SDRAM
@@ -284,5 +245,52 @@ set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQ[0] -entity Max1000_Wasser
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQM[1] -entity Max1000_Wasserwaage_SDRAM
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQM[0] -entity Max1000_Wasserwaage_SDRAM
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_RASn -entity Max1000_Wasserwaage_SDRAM
+set_global_assignment -name VERILOG_FILE qflexpress.v
+set_global_assignment -name VERILOG_FILE NIOS_sdram_controller_0.v
+set_global_assignment -name VHDL_FILE ../Opencores/slib_mv_filter.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_input_sync.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_input_filter.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_fifo.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_edge_detect.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_counter.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/slib_clock_div.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/uart_transmitter.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/uart_receiver.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/uart_interrupt.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/uart_baudgen.vhd
+set_global_assignment -name VHDL_FILE ../Opencores/uart_16750.vhd
+set_global_assignment -name VHDL_FILE max1k_88_top.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86_struct.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86pack.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/cpu86instr.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/a_table.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/segregfile_rtl.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/regshiftmux_regshift.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/r_table.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/proc_rtl.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/n_table.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/multiplier_rtl.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/m_table.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/ipregister_rtl.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/formatter_struct.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/divider_rtl_ser.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/dataregfile_rtl.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/datapath_struct.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/d_table.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/biufsm_fsm.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/biu_struct.vhd
+set_global_assignment -name VHDL_FILE ../cpu86_rtl/alu_rtl.vhd
+set_global_assignment -name SDC_FILE max1k_88_top.sdc
+set_global_assignment -name VHDL_FILE ram.vhd
+set_global_assignment -name VHDL_FILE ../top_rtl/Bootstrap_rtl.vhd
+set_global_assignment -name VHDL_FILE ../top_rtl/uart_top_struct.vhd
+set_global_assignment -name QIP_FILE pll12to40.qip
 set_global_assignment -name VHDL_FILE mmioqspi.vhd
+set_location_assignment PIN_B3 -to TOPQSPI_CS_N
+set_location_assignment PIN_C4 -to TOPQSPI_DAT[3]
+set_location_assignment PIN_B9 -to TOPQSPI_DAT[2]
+set_location_assignment PIN_B2 -to TOPQSPI_DAT[1]
+set_location_assignment PIN_A2 -to TOPQSPI_DAT[0]
+set_location_assignment PIN_A3 -to TOPQSPI_SCK
+set_global_assignment -name ENABLE_CONFIGURATION_PINS OFF
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
