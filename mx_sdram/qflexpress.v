@@ -142,7 +142,7 @@ module	qflexpress #(
 		// can be done with a RDDELAY=3
 		// On Intel/Altera devices, RDDELAY=2 works
 		// I'm using RDDELAY=0 for my iCE40 devices
-		parameter	RDDELAY = 0,
+		parameter	RDDELAY = 2,
 		// }}}
 		// NDUMMY
 		// {{{
@@ -152,7 +152,7 @@ module	qflexpress #(
 		// 0xa0.  The default is 10 for a Micron device.  Windbond
 		// seems to want 2.  Note your flash device carefully when
 		// you choose this value.
-		parameter	NDUMMY = 6,
+		parameter	NDUMMY = 2,
 		// }}}
 		// OPT_STARTUP_FILE
 		// {{{
