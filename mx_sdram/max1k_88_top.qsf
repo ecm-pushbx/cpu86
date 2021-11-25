@@ -284,5 +284,5 @@ set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQ[0] -entity Max1000_Wasser
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQM[1] -entity Max1000_Wasserwaage_SDRAM
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_DQM[0] -entity Max1000_Wasserwaage_SDRAM
 set_instance_assignment -name SLEW_RATE 2 -to SDRAM_RASn -entity Max1000_Wasserwaage_SDRAM
-set_global_assignment -name EDA_NETLIST_WRITER_OUTPUT_DIR simulation/modelsim -section_id eda_simulation
+set_global_assignment -name VHDL_FILE mmioqspi.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

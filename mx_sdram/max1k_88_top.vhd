@@ -53,6 +53,7 @@ END COMPONENT;
 
 signal clk40 : std_logic;
 signal dbus_in  : std_logic_vector (7 DOWNTO 0);
+signal dbus_mmioqspi  : std_logic_vector (7 DOWNTO 0);
 signal intr     : std_logic;
 signal nmi      : std_logic;
 signal por      : std_logic := '1';
@@ -71,12 +72,14 @@ signal wrn      : std_logic;
    SIGNAL wea         : std_logic_VECTOR(0 DOWNTO 0);
    SIGNAL sel_s       : std_logic_vector(5 DOWNTO 0) := "111111";
    signal csromn : std_logic;
+   signal csmmioqspin : std_logic;
    signal csisramn : std_logic;
    signal csesdramn : std_logic;
    SIGNAL dout        : std_logic;
    SIGNAL dout1       : std_logic;
 
    SIGNAL wrcom       : std_logic;
+	SIGNAL wrmmioqspi  : std_logic;
    signal rxclk_s	  : std_logic;
    SIGNAL DCDn        : std_logic := '1';
    SIGNAL DSRn        : std_logic := '1';
@@ -177,10 +180,22 @@ pll0: entity work.pll12to40 PORT MAP (
 		abus   => abus(7 downto 0),
 		dbus   => dbus_rom
 	);
+	wrmmioqspi <= not wrn and not csmmioqspin;
+	mmioqspi0:		ENTITY work.mmio_qspi PORT map(
+		abus		=> abus(3 downto 0),
+		clock		=> clk40,
+		data		=> dbus_out,
+		wren		=> wrmmioqspi,
+		dbus	   => dbus_mmioqspi,
+		reset_n	=> reset_n
+	);
    -- chip_select 
    -- Comport, uart_16550
    -- COM1, 0x3F8-0x3FF
    cscom1 <= '0' when (abus(15 downto 4)=x"03f" AND iom='1') else '1';
+	-- MMIO block to access QSPI controller
+	-- 1-paragraph segment at FFEFh (FFEF0h to FFEFFh)
+	csmmioqspin <= '0' when (abus(19 downto 4)=x"FFEF" AND iom='0') else '1';
    -- internal SRAM
    -- below 0x8000
    csisramn <= '0' when (abus(19 downto 15)=x"0" AND iom='0') else '1';
@@ -195,19 +210,20 @@ pll0: entity work.pll12to40 PORT MAP (
 --   csesdramn <= '0' when ((abus(19 downto 16)=X"1") AND iom='0') else '1';
    -- external SDRAM as memory
    -- all memory except isram and rom
-   csesdramn <= '0' when (csisramn='1' AND csromn='1' AND iom='0') else '1';
+   csesdramn <= '0' when (csisramn='1' AND csromn='1' AND csmmioqspin='1' AND iom='0') else '1';
    -- dbus_in_cpu multiplexer
 --   sel_s <= cscom1 & csromn & csisramn & csspin & csesdramn & csbutled;
-   sel_s <= cscom1 & csromn & csisramn & "1" & csesdramn & "1";
+   sel_s <= cscom1 & csromn & csisramn & csmmioqspin & csesdramn & "1";
 --   sel_s <= "1" & csromn & csisramn & "111";
 --   process(sel_s,dbus_com1,dbus_in,dbus_rom,dbus_esram,dbus_spi,buttons)
-   process(sel_s,dbus_com1,dbus_in,dbus_rom,dbus_in_cpu,za_data)
+   process(sel_s,dbus_com1,dbus_in,dbus_rom,dbus_in_cpu,dbus_mmioqspi,za_data)
       begin
          case sel_s is
               when "011111"  => dbus_in_cpu <= dbus_com1;  -- UART     
               when "101111"  => dbus_in_cpu <= dbus_rom;   -- BootStrap Loader  
               when "110111"  => dbus_in_cpu <= dbus_in;    -- Embedded SRAM        
 --              when "111011"  => dbus_in_cpu <= dbus_spi;   -- SPI
+              when "111011"  => dbus_in_cpu <= dbus_mmioqspi;
               when "111101" => dbus_in_cpu <= za_data(7 downto 0);  -- External SDRAM  
 --              when "111110" => dbus_in_cpu <= x"0" & buttons;  -- butled
               when others => dbus_in_cpu <= dbus_in_cpu;  -- default : latch
