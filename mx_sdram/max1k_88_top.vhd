@@ -165,7 +165,8 @@ end function;
 begin
 
 reset <= not reset_n;
-qspi_dat <= tern(qspi_bmod(1) = '0', "11" & "Z" & qspi_dat(0), tern(qspi_bmod(0) = '1', "ZZZZ", qspi_dat(3 downto 0)));
+i_qspi_dat <= TOPQSPI_DAT;
+qspi_dat <= tern(qspi_bmod(1) = '0', "11" & "Z" & TOPQSPI_DAT(0), tern(qspi_bmod(0) = '1', "ZZZZ", TOPQSPI_DAT(3 downto 0)));
 -- qspi_dat <= ("11" & "Z" & qspi_dat(0)) when not qspi_bmod(1) else
 -- 				(("ZZZZ") when qspi_bmod(0) else qspi_dat(3 downto 0));
 o_qspi_cs_n <= w_qspi_cs_n;
