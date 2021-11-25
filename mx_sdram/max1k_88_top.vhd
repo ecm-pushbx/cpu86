@@ -182,9 +182,9 @@ pll0: entity work.pll12to40 PORT MAP (
    -- COM1, 0x3F8-0x3FF
    cscom1 <= '0' when (abus(15 downto 4)=x"03f" AND iom='1') else '1';
    -- internal SRAM
-   -- below 0x4000
-   csisramn <= '0' when (abus(19 downto 16)=x"0" AND iom='0') else '1';
-  -- Bootstrap ROM 256 bytes 
+   -- below 0x8000
+   csisramn <= '0' when (abus(19 downto 15)=x"0" AND iom='0') else '1';
+   -- Bootstrap ROM 256 bytes
    -- FFFFF-FF=FFF00
    csromn <= '0' when ((abus(19 downto 8)=X"FFF") AND iom='0') else '1';   
    -- external SDRAM as I/O
