@@ -25,6 +25,8 @@ nasm "$source" -f ith -o output.hex "$@"
 # 02: EAD
 # 0380: CS
 # 79: checksum
+echo -ne '\r'
+sleep 0.02
 (echo "l:02000002038079"; cat output.hex) | sed -re 's/:00000001FF/:040000030380010075/g' | tr -d '\n' | ./s1.pl $s1opt -
 # :04 0000 03 0380 0100 75
 # 04: length
