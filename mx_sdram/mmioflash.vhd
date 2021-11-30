@@ -101,17 +101,18 @@ begin
 						wb_we <= '0';
 						wb_cyc <= '1';
 						wb_stb <= '1';
+						flashcontrol(6) <= '0';
 						flashcontrol(7) <= '1';
 						flashduration <= X"00";
 					elsif (data(2) = '1') then
 						wb_we <= '0';
 						wb_cyc <= '1';
 						cfg_stb <= '1';
+						flashcontrol(6) <= '0';
 						flashcontrol(7) <= '1';
 						flashduration <= X"00";
 					elsif (data(3) = '1') then
-						i_wb_data(31 downto 16) <= (others => '0');
-					   i_wb_data(15 downto 0) <= flashdata(15 downto 0);
+						i_wb_data <= flashdata;
 						wb_we <= '1';
 						wb_cyc <= '1';
 						cfg_stb <= '1';
