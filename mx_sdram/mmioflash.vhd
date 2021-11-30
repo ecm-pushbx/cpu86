@@ -3,6 +3,14 @@
 -- Module Name  : mmioflash
 --***********************************************************
 
+-- By C. Masloch, 2021
+--
+-- Usage of the works is permitted provided that this
+-- instrument is retained with the works, so that any entity
+-- that uses the works is notified of this instrument.
+--
+-- DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
+
 library ieee;
 use ieee.std_logic_1164.ALL;
 use ieee.numeric_std.all;
