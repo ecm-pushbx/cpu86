@@ -74,16 +74,10 @@ COMPONENT NIOS_sdram_controller_0
 	);
 END COMPONENT;
 
-signal o_qspi_cs_n	: std_logic;
-signal o_qspi_sck		: std_logic;
-signal io_qspi_dat	: std_logic_vector(3 downto 0);
-signal w_qspi_sck		: std_logic;
-signal w_qspi_cs_n	: std_logic;
+signal qspi_cs_n		: std_logic;
 signal qspi_bmod		: std_logic_vector(1 downto 0);
 signal qspi_dat		: std_logic_vector(3 downto 0);
 signal i_qspi_dat		: std_logic_vector(3 downto 0);
-signal i_qspi_pedge	: std_logic_vector(3 downto 0);
-signal i_qspi_nedge	: std_logic_vector(3 downto 0);
 
 signal qspi_cyc		: std_logic := '0';
 signal qspi_stb		: std_logic := '0';
@@ -153,23 +147,33 @@ signal reset_n : std_logic;
 signal reset : std_logic;
 	signal	pll_sys_locked					: std_logic;
 
-function tern(cond : boolean; res_true, res_false : std_logic_vector) return std_logic_vector is
-begin
-  if cond then
-    return res_true;
-  else
-    return res_false;
-  end if;
-end function;
-
 begin
 
-reset <= not reset_n;
-i_qspi_dat <= TOPQSPI_DAT;
-qspi_dat <= tern(qspi_bmod(1) = '0', "11" & "Z" & TOPQSPI_DAT(0), tern(qspi_bmod(0) = '1', "ZZZZ", TOPQSPI_DAT(3 downto 0)));
--- qspi_dat <= ("11" & "Z" & qspi_dat(0)) when not qspi_bmod(1) else
--- 				(("ZZZZ") when qspi_bmod(0) else qspi_dat(3 downto 0));
-o_qspi_cs_n <= w_qspi_cs_n;
+process(reset_n)
+begin
+	reset <= not reset_n;
+end process;
+
+process(qspi_cs_n)
+begin
+	TOPQSPI_CS_N <= qspi_cs_n;
+end process;
+
+process(TOPQSPI_DAT)
+begin
+	i_qspi_dat <= TOPQSPI_DAT;
+end process;
+
+process(qspi_bmod, qspi_dat)
+begin
+if qspi_bmod(1) = '0' then
+	TOPQSPI_DAT <= "11" & "Z" & qspi_dat(0);
+elsif qspi_bmod(0) = '1' then
+	TOPQSPI_DAT <= (others => 'Z');
+else
+	TOPQSPI_DAT <= qspi_dat(3 downto 0);
+end if;
+end process;
 
 --	 clk40 <= CLK12M;
 --clk40/baudrate static SDRAM access status :
@@ -380,7 +384,7 @@ qspi : qflexpress port map (
 		o_wb_ack		=> qspi_ack,
 		o_wb_data	=> qspi_o_data,
 		o_qspi_sck	=> TOPQSPI_SCK,
-		o_qspi_cs_n	=> TOPQSPI_CS_N,
+		o_qspi_cs_n	=> qspi_cs_n,
 		o_qspi_mod	=> qspi_bmod,
 		o_qspi_dat	=> qspi_dat,
 		i_qspi_dat	=> i_qspi_dat
