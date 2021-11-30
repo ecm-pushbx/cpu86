@@ -252,7 +252,6 @@ set_location_assignment PIN_B2 -to TOPQSPI_DAT[1]
 set_location_assignment PIN_A2 -to TOPQSPI_DAT[0]
 set_location_assignment PIN_A3 -to TOPQSPI_SCK
 set_global_assignment -name ENABLE_CONFIGURATION_PINS OFF
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VERILOG_FILE dualflexpress.v
 set_global_assignment -name VHDL_FILE mmioflash.vhd
 set_global_assignment -name VERILOG_FILE NIOS_sdram_controller_0.v
@@ -294,3 +293,4 @@ set_global_assignment -name VHDL_FILE ram.vhd
 set_global_assignment -name VHDL_FILE ../top_rtl/Bootstrap_rtl.vhd
 set_global_assignment -name VHDL_FILE ../top_rtl/uart_top_struct.vhd
 set_global_assignment -name QIP_FILE pll12to40.qip
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -28,7 +28,7 @@ end entity;
 
 architecture behavioral of max1k_88_top is
 
-component qflexpress port (
+component dualflexpress port (
 		i_clk			: in std_logic;
 		i_reset		: in std_logic;
 		i_wb_cyc		: in std_logic;
@@ -40,11 +40,11 @@ component qflexpress port (
 		o_wb_stall	: out std_logic;
 		o_wb_ack		: out std_logic;
 		o_wb_data	: out std_logic_vector(31 downto 0);
-		o_qspi_sck	: out std_logic;
-		o_qspi_cs_n	: out std_logic;
-		o_qspi_mod	: out std_logic_vector(1 downto 0);
-		o_qspi_dat	: out std_logic_vector(3 downto 0);
-		i_qspi_dat	: in std_logic_vector(3 downto 0)
+		o_dspi_sck	: out std_logic;
+		o_dspi_cs_n	: out std_logic;
+		o_dspi_mod	: out std_logic_vector(1 downto 0);
+		o_dspi_dat	: out std_logic_vector(3 downto 0);
+		i_dspi_dat	: in std_logic_vector(3 downto 0)
 );
 end component;
 
@@ -74,20 +74,20 @@ COMPONENT NIOS_sdram_controller_0
 	);
 END COMPONENT;
 
-signal qspi_cs_n		: std_logic;
-signal qspi_bmod		: std_logic_vector(1 downto 0);
-signal qspi_dat		: std_logic_vector(3 downto 0);
-signal i_qspi_dat		: std_logic_vector(3 downto 0);
+signal dspi_cs_n		: std_logic;
+signal dspi_bmod		: std_logic_vector(1 downto 0);
+signal dspi_dat		: std_logic_vector(3 downto 0);
+signal i_dspi_dat		: std_logic_vector(3 downto 0);
 
-signal qspi_cyc		: std_logic := '0';
-signal qspi_stb		: std_logic := '0';
-signal qspi_cfg_stb	: std_logic := '0';
-signal qspi_we			: std_logic := '0';
-signal qspi_addr		: std_logic_vector(21 downto 0);
-signal qspi_i_data	: std_logic_vector(31 downto 0);
-signal qspi_o_data	: std_logic_vector(31 downto 0);
-signal qspi_stall		: std_logic := '0';
-signal qspi_ack		: std_logic := '0';
+signal dspi_cyc		: std_logic := '0';
+signal dspi_stb		: std_logic := '0';
+signal dspi_cfg_stb	: std_logic := '0';
+signal dspi_we			: std_logic := '0';
+signal dspi_addr		: std_logic_vector(21 downto 0);
+signal dspi_i_data	: std_logic_vector(31 downto 0);
+signal dspi_o_data	: std_logic_vector(31 downto 0);
+signal dspi_stall		: std_logic := '0';
+signal dspi_ack		: std_logic := '0';
 
 signal clk40 : std_logic;
 signal dbus_in  : std_logic_vector (7 DOWNTO 0);
@@ -154,24 +154,24 @@ begin
 	reset <= not reset_n;
 end process;
 
-process(qspi_cs_n)
+process(dspi_cs_n)
 begin
-	TOPQSPI_CS_N <= qspi_cs_n;
+	TOPQSPI_CS_N <= dspi_cs_n;
 end process;
 
 process(TOPQSPI_DAT)
 begin
-	i_qspi_dat <= TOPQSPI_DAT;
+	i_dspi_dat <= TOPQSPI_DAT;
 end process;
 
-process(qspi_bmod, qspi_dat)
+process(dspi_bmod, dspi_dat)
 begin
-if qspi_bmod(1) = '0' then
-	TOPQSPI_DAT <= "11" & "Z" & qspi_dat(0);
-elsif qspi_bmod(0) = '1' then
-	TOPQSPI_DAT <= (others => 'Z');
+if dspi_bmod(1) = '0' then
+	TOPQSPI_DAT(1 downto 0) <= "Z" & dspi_dat(0);
+elsif dspi_bmod(0) = '1' then
+	TOPQSPI_DAT(1 downto 0) <= (others => 'Z');
 else
-	TOPQSPI_DAT <= qspi_dat(3 downto 0);
+	TOPQSPI_DAT(1 downto 0) <= dspi_dat(1 downto 0);
 end if;
 end process;
 
@@ -248,15 +248,15 @@ pll0: entity work.pll12to40 PORT MAP (
 	);
 	wrmmioflash <= not wrn and not csmmioflashn;
 	mmioflash0:		ENTITY work.mmioflash PORT map(
-		wb_cyc	=> qspi_cyc,
-		wb_stb	=> qspi_stb,
-		cfg_stb	=> qspi_cfg_stb,
-		wb_we		=> qspi_we,
-		wb_addr	=> qspi_addr,
-		i_wb_data=> qspi_i_data,
-		wb_stall	=> qspi_stall,
-		wb_ack	=> qspi_ack,
-		o_wb_data=> qspi_o_data,
+		wb_cyc	=> dspi_cyc,
+		wb_stb	=> dspi_stb,
+		cfg_stb	=> dspi_cfg_stb,
+		wb_we		=> dspi_we,
+		wb_addr	=> dspi_addr,
+		i_wb_data=> dspi_i_data,
+		wb_stall	=> dspi_stall,
+		wb_ack	=> dspi_ack,
+		o_wb_data=> dspi_o_data,
 		abus		=> abus(3 downto 0),
 		clock		=> clk_int80,
 		clockmem	=> clk40,
@@ -372,23 +372,23 @@ pll0: entity work.pll12to40 PORT MAP (
 	SDRAM_ADDR(12) <= '0';																				-- comment this line, if the full address width of 14 bits is required
 
 
-flash0 : qflexpress port map (
+flash0 : dualflexpress port map (
 		i_clk			=> clk_int80,
 		i_reset		=> reset,
-		i_wb_cyc		=> qspi_cyc,
-		i_wb_stb		=> qspi_stb,
-		i_cfg_stb	=> qspi_cfg_stb,
-		i_wb_we		=> qspi_we,
-		i_wb_addr	=> qspi_addr,
-		i_wb_data	=> qspi_i_data,
-		o_wb_stall	=> qspi_stall,
-		o_wb_ack		=> qspi_ack,
-		o_wb_data	=> qspi_o_data,
-		o_qspi_sck	=> TOPQSPI_SCK,
-		o_qspi_cs_n	=> qspi_cs_n,
-		o_qspi_mod	=> qspi_bmod,
-		o_qspi_dat	=> qspi_dat,
-		i_qspi_dat	=> i_qspi_dat
+		i_wb_cyc		=> dspi_cyc,
+		i_wb_stb		=> dspi_stb,
+		i_cfg_stb	=> dspi_cfg_stb,
+		i_wb_we		=> dspi_we,
+		i_wb_addr	=> dspi_addr,
+		i_wb_data	=> dspi_i_data,
+		o_wb_stall	=> dspi_stall,
+		o_wb_ack		=> dspi_ack,
+		o_wb_data	=> dspi_o_data,
+		o_dspi_sck	=> TOPQSPI_SCK,
+		o_dspi_cs_n	=> dspi_cs_n,
+		o_dspi_mod	=> dspi_bmod,
+		o_dspi_dat	=> dspi_dat,
+		i_dspi_dat	=> i_dspi_dat
 );
 
 end architecture;
