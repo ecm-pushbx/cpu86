@@ -20,6 +20,7 @@ entity mmio_qspi is
 		  o_wb_data		: in std_logic_vector(31 downto 0);
 		  abus   : in  std_logic_vector(3 downto 0);
 		  clock	: in STD_LOGIC := '1';
+		  clockmem		: in STD_LOGIC := '1';
 		  data	: in STD_LOGIC_VECTOR(7 DOWNTO 0);
 		  wren	: in STD_LOGIC;
         dbus   : out std_logic_vector(7 downto 0);
@@ -34,9 +35,10 @@ signal qaddress : std_logic_vector(31 downto 0);
 signal qcontrol : std_logic_vector(7 downto 0);
 signal qduration : std_logic_vector(7 downto 0);
 signal q_next_is_data : std_logic;
+signal priorclockmem : std_logic;
 
 begin
- process(abus, clock, wren, reset_n, qcontrol, q_next_is_data, wb_ack, o_wb_data)
+ process(abus, clock, clockmem, wren, reset_n, qcontrol, q_next_is_data, wb_ack, o_wb_data)
   begin
 		if (reset_n = '0') then
 			qdata <= X"00000000";
@@ -48,6 +50,7 @@ begin
 			wb_cyc <= '0';
 			cfg_stb <= '0';
 			i_wb_data <= X"00000000";
+			priorclockmem <= '0';
 		elsif rising_edge(clock) then
 			if (qcontrol(7) = '1') then
 				if (q_next_is_data = '1') then
@@ -66,6 +69,11 @@ begin
 					qduration <= std_logic_vector(unsigned(qduration) + 1);
 				end if;
 			end if;
+		if (clockmem = '0') then
+			priorclockmem <= '0';
+		end if;
+		if (clockmem = '1' and priorclockmem = '0') then
+			priorclockmem <= '1';
 			if (wren='0') then
 				case abus is
 				 when "0000"  => dbus <= qdata(7 downto 0);
@@ -133,6 +141,7 @@ begin
              when others    => null;
 				end case;
 				end if;
+			end if;
 			end if;
 		end if;
 end process;

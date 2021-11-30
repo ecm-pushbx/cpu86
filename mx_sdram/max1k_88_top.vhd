@@ -258,7 +258,8 @@ pll0: entity work.pll12to40 PORT MAP (
 		wb_ack	=> qspi_ack,
 		o_wb_data=> qspi_o_data,
 		abus		=> abus(3 downto 0),
-		clock		=> clk40,
+		clock		=> clk_int80,
+		clockmem	=> clk40,
 		data		=> dbus_out,
 		wren		=> wrmmioqspi,
 		dbus	   => dbus_mmioqspi,
@@ -372,7 +373,7 @@ pll0: entity work.pll12to40 PORT MAP (
 
 
 qspi : qflexpress port map (
-		i_clk			=> clk40,
+		i_clk			=> clk_int80,
 		i_reset		=> reset,
 		i_wb_cyc		=> qspi_cyc,
 		i_wb_stb		=> qspi_stb,
