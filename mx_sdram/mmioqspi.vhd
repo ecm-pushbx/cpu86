@@ -44,12 +44,20 @@ begin
 			qcontrol <= X"00";
 			qduration <= X"00";
 			q_next_is_data <= '0';
+			wb_stb <= '0';
+			wb_cyc <= '0';
+			cfg_stb <= '0';
+			i_wb_data <= X"00000000";
 		elsif rising_edge(clock) then
 			if (qcontrol(7) = '1') then
 				if (q_next_is_data = '1') then
-					qdata <= o_wb_data;
+					if (qcontrol(6) = '0') then
+						qdata <= o_wb_data;
+					end if;
 					wb_stb <= '0';
+					cfg_stb <= '0';
 					wb_cyc <= '0';
+					qcontrol(6) <= '0';
 					qcontrol(7) <= '0';
 					q_next_is_data <= '0';
 				elsif (wb_ack = '1') then
@@ -85,6 +93,21 @@ begin
 						wb_we <= '0';
 						wb_cyc <= '1';
 						wb_stb <= '1';
+						qcontrol(7) <= '1';
+						qduration <= X"00";
+					elsif (data(2) = '1') then
+						wb_we <= '0';
+						wb_cyc <= '1';
+						cfg_stb <= '1';
+						qcontrol(7) <= '1';
+						qduration <= X"00";
+					elsif (data(3) = '1') then
+						i_wb_data(31 downto 16) <= (others => '0');
+					   i_wb_data(15 downto 0) <= qdata(15 downto 0);
+						wb_we <= '1';
+						wb_cyc <= '1';
+						cfg_stb <= '1';
+						qcontrol(6) <= '1';
 						qcontrol(7) <= '1';
 						qduration <= X"00";
 					end if;
