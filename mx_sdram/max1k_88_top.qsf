@@ -252,7 +252,6 @@ set_location_assignment PIN_B2 -to TOPQSPI_DAT[1]
 set_location_assignment PIN_A2 -to TOPQSPI_DAT[0]
 set_location_assignment PIN_A3 -to TOPQSPI_SCK
 set_global_assignment -name ENABLE_CONFIGURATION_PINS OFF
-set_global_assignment -name VHDL_FILE mmiofl.vhd
 set_global_assignment -name VERILOG_FILE NIOS_sdram_controller_0.v
 set_global_assignment -name VHDL_FILE ../Opencores/slib_mv_filter.vhd
 set_global_assignment -name VHDL_FILE ../Opencores/slib_input_sync.vhd
