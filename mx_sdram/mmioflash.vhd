@@ -42,39 +42,55 @@ signal flashdata : std_logic_vector(31 downto 0);
 signal flashaddress : std_logic_vector(31 downto 0);
 signal flashcontrol : std_logic_vector(7 downto 0);
 signal flashduration : std_logic_vector(7 downto 0);
-signal flash_next_is_data : std_logic;
 signal priorclockmem : std_logic;
+signal internal_wb_stb : std_logic;
+signal internal_cfg_stb : std_logic;
+signal internal_wb_cyc : std_logic;
 
 begin
- process(abus, clock, clockmem, wren, reset_n, flashcontrol, flash_next_is_data, wb_ack, o_wb_data)
+
+	wb_stb <= internal_wb_stb;
+	cfg_stb <= internal_cfg_stb;
+	wb_cyc <= internal_wb_cyc;
+
+ process(abus, clock, clockmem, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
   begin
 		if (reset_n = '0') then
 			flashdata <= X"00000000";
 			flashaddress <= X"00000000";
 			flashcontrol <= X"00";
 			flashduration <= X"00";
-			flash_next_is_data <= '0';
-			wb_stb <= '0';
-			wb_cyc <= '0';
-			cfg_stb <= '0';
+			internal_wb_stb <= '0';
+			internal_cfg_stb <= '0';
+			internal_wb_cyc <= '0';
 			i_wb_data <= X"00000000";
 			priorclockmem <= '0';
 		elsif rising_edge(clock) then
-			if (flashcontrol(7) = '1') then
-				if (flash_next_is_data = '1') then
+			if (internal_wb_stb = '1' or internal_cfg_stb = '1') then
+				if (wb_stall = '0') then
+					internal_wb_stb <= '0';
+					internal_cfg_stb <= '0';
+				else
+					flashduration <= std_logic_vector(unsigned(flashduration) + 1);
+				end if;
+				if (wb_stall = '0' and wb_ack = '1') then
 					if (flashcontrol(6) = '0') then
 						flashdata <= o_wb_data;
 					end if;
-					wb_stb <= '0';
-					cfg_stb <= '0';
-					wb_cyc <= '0';
+					internal_wb_cyc <= '0';
+					flashcontrol(5) <= '0';
 					flashcontrol(6) <= '0';
 					flashcontrol(7) <= '0';
-					flash_next_is_data <= '0';
-				elsif (wb_ack = '1') then
-					flash_next_is_data <= '1';
-				else
-					flashduration <= std_logic_vector(unsigned(flashduration) + 1);
+				end if;
+			elsif (internal_wb_cyc = '1') then
+				if (wb_ack = '1') then
+					if (flashcontrol(6) = '0') then
+						flashdata <= o_wb_data;
+					end if;
+					internal_wb_cyc <= '0';
+					flashcontrol(5) <= '0';
+					flashcontrol(6) <= '0';
+					flashcontrol(7) <= '0';
 				end if;
 			end if;
 		if (clockmem = '0') then
@@ -107,25 +123,30 @@ begin
 					if (data(0) = '1') then
 						wb_addr <= flashaddress(21 downto 0);
 						wb_we <= '0';
-						wb_cyc <= '1';
-						wb_stb <= '1';
-						flashcontrol(6) <= '0';
+						internal_wb_cyc <= '1';
+						internal_wb_stb <= '1';
+						internal_cfg_stb <= '0';
 						flashcontrol(7) <= '1';
+						flashcontrol(6) <= '0';
 						flashduration <= X"00";
 					elsif (data(2) = '1') then
+						wb_addr <= (others => '0');
 						wb_we <= '0';
-						wb_cyc <= '1';
-						cfg_stb <= '1';
-						flashcontrol(6) <= '0';
+						internal_wb_cyc <= '1';
+						internal_wb_stb <= '0';
+						internal_cfg_stb <= '1';
 						flashcontrol(7) <= '1';
+						flashcontrol(6) <= '0';
 						flashduration <= X"00";
 					elsif (data(3) = '1') then
+						wb_addr <= (others => '0');
 						i_wb_data <= flashdata;
 						wb_we <= '1';
-						wb_cyc <= '1';
-						cfg_stb <= '1';
-						flashcontrol(6) <= '1';
+						internal_wb_cyc <= '1';
+						internal_wb_stb <= '0';
+						internal_cfg_stb <= '1';
 						flashcontrol(7) <= '1';
+						flashcontrol(6) <= '1';
 						flashduration <= X"00";
 					end if;
 				else
