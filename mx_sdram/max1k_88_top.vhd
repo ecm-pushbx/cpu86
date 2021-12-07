@@ -33,13 +33,21 @@ component dualflexpress port (
 		i_reset		: in std_logic;
 		i_wb_cyc		: in std_logic;
 		i_wb_stb		: in std_logic;
-		i_cfg_stb	: in std_logic;
 		i_wb_we		: in std_logic;
 		i_wb_addr	: in std_logic_vector(21 downto 0);
 		i_wb_data	: in std_logic_vector(31 downto 0);
+		i_wb_sel		: in std_logic_vector(3 downto 0);
 		o_wb_stall	: out std_logic;
 		o_wb_ack		: out std_logic;
 		o_wb_data	: out std_logic_vector(31 downto 0);
+		i_cfg_cyc	: in std_logic;
+		i_cfg_stb	: in std_logic;
+		i_cfg_we		: in std_logic;
+		i_cfg_data	: in std_logic_vector(31 downto 0);
+		i_cfg_sel	: in std_logic_vector(3 downto 0);
+		o_cfg_stall	: out std_logic;
+		o_cfg_ack	: out std_logic;
+		o_cfg_data	: out std_logic_vector(31 downto 0);
 		o_dspi_sck	: out std_logic;
 		o_dspi_cs_n	: out std_logic;
 		o_dspi_mod	: out std_logic_vector(1 downto 0);
@@ -81,13 +89,22 @@ signal i_dspi_dat		: std_logic_vector(3 downto 0);
 
 signal dspi_cyc		: std_logic := '0';
 signal dspi_stb		: std_logic := '0';
-signal dspi_cfg_stb	: std_logic := '0';
 signal dspi_we			: std_logic := '0';
 signal dspi_addr		: std_logic_vector(21 downto 0);
 signal dspi_i_data	: std_logic_vector(31 downto 0);
+signal dspi_i_sel		: std_logic_vector(3 downto 0) := "1111";
 signal dspi_o_data	: std_logic_vector(31 downto 0);
 signal dspi_stall		: std_logic := '0';
 signal dspi_ack		: std_logic := '0';
+
+signal dspi_cfg_cyc		: std_logic := '0';
+signal dspi_cfg_stb		: std_logic := '0';
+signal dspi_cfg_we		: std_logic := '0';
+signal dspi_i_cfg_data	: std_logic_vector(31 downto 0);
+signal dspi_i_cfg_sel	: std_logic_vector(3 downto 0) := "1111";
+signal dspi_o_cfg_data	: std_logic_vector(31 downto 0);
+signal dspi_cfg_stall	: std_logic := '0';
+signal dspi_cfg_ack		: std_logic := '0';
 
 signal clk40 : std_logic;
 signal dbus_in  : std_logic_vector (7 DOWNTO 0);
@@ -252,13 +269,19 @@ pll0: entity work.pll12to40 PORT MAP (
 	mmioflash0:		ENTITY work.mmioflash PORT map(
 		wb_cyc	=> dspi_cyc,
 		wb_stb	=> dspi_stb,
-		cfg_stb	=> dspi_cfg_stb,
 		wb_we		=> dspi_we,
 		wb_addr	=> dspi_addr,
 		i_wb_data=> dspi_i_data,
 		wb_stall	=> dspi_stall,
 		wb_ack	=> dspi_ack,
 		o_wb_data=> dspi_o_data,
+		cfg_cyc	=> dspi_cfg_cyc,
+		cfg_stb	=> dspi_cfg_stb,
+		cfg_we	=> dspi_cfg_we,
+		i_cfg_data=> dspi_i_cfg_data,
+		cfg_stall=> dspi_cfg_stall,
+		cfg_ack	=> dspi_cfg_ack,
+		o_cfg_data=> dspi_o_cfg_data,
 		abus		=> abus(3 downto 0),
 		clock		=> clk_int80,
 		clockmem	=> clk40,
@@ -379,13 +402,21 @@ flash0 : dualflexpress port map (
 		i_reset		=> reset,
 		i_wb_cyc		=> dspi_cyc,
 		i_wb_stb		=> dspi_stb,
-		i_cfg_stb	=> dspi_cfg_stb,
 		i_wb_we		=> dspi_we,
 		i_wb_addr	=> dspi_addr,
 		i_wb_data	=> dspi_i_data,
+		i_wb_sel		=> dspi_i_sel,
 		o_wb_stall	=> dspi_stall,
 		o_wb_ack		=> dspi_ack,
 		o_wb_data	=> dspi_o_data,
+		i_cfg_cyc	=> dspi_cfg_cyc,
+		i_cfg_stb	=> dspi_cfg_stb,
+		i_cfg_we		=> dspi_cfg_we,
+		i_cfg_data	=> dspi_i_cfg_data,
+		i_cfg_sel	=> dspi_i_cfg_sel,
+		o_cfg_stall	=> dspi_cfg_stall,
+		o_cfg_ack	=> dspi_cfg_ack,
+		o_cfg_data	=> dspi_o_cfg_data,
 		o_dspi_sck	=> TOPQSPI_SCK,
 		o_dspi_cs_n	=> dspi_cs_n,
 		o_dspi_mod	=> dspi_bmod,

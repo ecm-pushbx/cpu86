@@ -19,13 +19,21 @@ entity mmioflash is
    port(
 		  wb_cyc	: out std_logic;
 		  wb_stb	: out std_logic;
-		  cfg_stb: out std_logic;
 		  wb_we	: out std_logic;
 		  wb_addr: out std_logic_vector(21 downto 0);
 		  i_wb_data		: out std_logic_vector(31 downto 0);
 		  wb_stall		: in std_logic;
 		  wb_ack			: in std_logic;
 		  o_wb_data		: in std_logic_vector(31 downto 0);
+
+			cfg_cyc	: out std_logic;
+			cfg_stb	: out std_logic;
+			cfg_we	: out std_logic;
+			i_cfg_data		: out std_logic_vector(31 downto 0);
+			cfg_stall		: in std_logic;
+			cfg_ack			: in std_logic;
+			o_cfg_data		: in std_logic_vector(31 downto 0);
+
 		  abus   : in  std_logic_vector(3 downto 0);
 		  clock	: in STD_LOGIC := '1';
 		  clockmem		: in STD_LOGIC := '1';
@@ -44,14 +52,16 @@ signal flashcontrol : std_logic_vector(7 downto 0);
 signal flashduration : std_logic_vector(7 downto 0);
 signal priorclockmem : std_logic;
 signal internal_wb_stb : std_logic;
-signal internal_cfg_stb : std_logic;
 signal internal_wb_cyc : std_logic;
+signal internal_cfg_stb : std_logic;
+signal internal_cfg_cyc : std_logic;
 
 begin
 
 	wb_stb <= internal_wb_stb;
-	cfg_stb <= internal_cfg_stb;
 	wb_cyc <= internal_wb_cyc;
+	cfg_stb <= internal_cfg_stb;
+	cfg_cyc <= internal_cfg_cyc;
 
  process(abus, clock, clockmem, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
   begin
@@ -61,15 +71,16 @@ begin
 			flashcontrol <= X"00";
 			flashduration <= X"00";
 			internal_wb_stb <= '0';
-			internal_cfg_stb <= '0';
 			internal_wb_cyc <= '0';
+			internal_cfg_stb <= '0';
+			internal_cfg_cyc <= '0';
 			i_wb_data <= X"00000000";
+			i_cfg_data <= X"00000000";
 			priorclockmem <= '0';
 		elsif rising_edge(clock) then
-			if (internal_wb_stb = '1' or internal_cfg_stb = '1') then
+			if (internal_wb_stb = '1') then
 				if (wb_stall = '0') then
 					internal_wb_stb <= '0';
-					internal_cfg_stb <= '0';
 				else
 					flashduration <= std_logic_vector(unsigned(flashduration) + 1);
 				end if;
@@ -88,6 +99,32 @@ begin
 						flashdata <= o_wb_data;
 					end if;
 					internal_wb_cyc <= '0';
+					flashcontrol(5) <= '0';
+					flashcontrol(6) <= '0';
+					flashcontrol(7) <= '0';
+				end if;
+			end if;
+			if (internal_cfg_stb = '1') then
+				if (cfg_stall = '0') then
+					internal_cfg_stb <= '0';
+				else
+					flashduration <= std_logic_vector(unsigned(flashduration) + 1);
+				end if;
+				if (cfg_stall = '0' and cfg_ack = '1') then
+					if (flashcontrol(6) = '0') then
+						flashdata <= o_cfg_data;
+					end if;
+					internal_cfg_cyc <= '0';
+					flashcontrol(5) <= '0';
+					flashcontrol(6) <= '0';
+					flashcontrol(7) <= '0';
+				end if;
+			elsif (internal_cfg_cyc = '1') then
+				if (cfg_ack = '1') then
+					if (flashcontrol(6) = '0') then
+						flashdata <= o_cfg_data;
+					end if;
+					internal_cfg_cyc <= '0';
 					flashcontrol(5) <= '0';
 					flashcontrol(6) <= '0';
 					flashcontrol(7) <= '0';
@@ -125,25 +162,20 @@ begin
 						wb_we <= '0';
 						internal_wb_cyc <= '1';
 						internal_wb_stb <= '1';
-						internal_cfg_stb <= '0';
 						flashcontrol(7) <= '1';
 						flashcontrol(6) <= '0';
 						flashduration <= X"00";
 					elsif (data(2) = '1') then
-						wb_addr <= (others => '0');
-						wb_we <= '0';
-						internal_wb_cyc <= '1';
-						internal_wb_stb <= '0';
+						cfg_we <= '0';
+						internal_cfg_cyc <= '1';
 						internal_cfg_stb <= '1';
 						flashcontrol(7) <= '1';
 						flashcontrol(6) <= '0';
 						flashduration <= X"00";
 					elsif (data(3) = '1') then
-						wb_addr <= (others => '0');
-						i_wb_data <= flashdata;
-						wb_we <= '1';
-						internal_wb_cyc <= '1';
-						internal_wb_stb <= '0';
+						i_cfg_data <= flashdata;
+						cfg_we <= '1';
+						internal_cfg_cyc <= '1';
 						internal_cfg_stb <= '1';
 						flashcontrol(7) <= '1';
 						flashcontrol(6) <= '1';
