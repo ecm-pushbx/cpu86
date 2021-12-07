@@ -164,6 +164,8 @@ begin
 	i_dspi_dat <= TOPQSPI_DAT;
 end process;
 
+TOPQSPI_DAT(3 downto 2) <= "11";
+
 process(dspi_bmod, dspi_dat)
 begin
 if dspi_bmod(1) = '0' then
