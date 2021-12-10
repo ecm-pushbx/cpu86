@@ -42,6 +42,7 @@ signal flashdata : std_logic_vector(31 downto 0);
 signal flashaddress : std_logic_vector(31 downto 0);
 signal flashcontrol : std_logic_vector(7 downto 0);
 signal flashduration : std_logic_vector(7 downto 0);
+signal flashstatus : std_logic_vector(15 downto 0);
 signal priorclockmem : std_logic;
 signal internal_wb_stb : std_logic;
 signal internal_cfg_stb : std_logic;
@@ -59,6 +60,7 @@ begin
 			flashdata <= X"00000000";
 			flashaddress <= X"00000000";
 			flashcontrol <= X"00";
+			flashstatus <= X"0000";
 			flashduration <= X"00";
 			internal_wb_stb <= '0';
 			internal_cfg_stb <= '0';
@@ -114,8 +116,8 @@ begin
              when "1011"  => dbus <= X"00";
              when "1100"  => dbus <= flashcontrol(7 downto 0);
              when "1101"  => dbus <= flashduration(7 downto 0);
-             when "1110"  => dbus <= X"00";
-             when "1111"  => dbus <= X"00";
+             when "1110"  => dbus <= flashstatus(7 downto 0);
+             when "1111"  => dbus <= flashstatus(15 downto 8);
              when others    => dbus <= "--------";
 				end case;
 			else -- wren='1'
@@ -166,8 +168,8 @@ begin
              when "1100"  => null;
              -- when "1100"  => flashcontrol(7 downto 0) <= data;
              when "1101"  => null;
-             when "1110"  => null;
-             when "1111"  => null;
+             when "1110"  => flashstatus(7 downto 0) <= data;
+             when "1111"  => flashstatus(15 downto 8) <= data;
              when others    => null;
 				end case;
 				end if;
