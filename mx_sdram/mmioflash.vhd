@@ -51,6 +51,11 @@ signal internal_i_wb_data : std_logic_vector(31 downto 0);
 signal internal_wb_addr : std_logic_vector(21 downto 0);
 signal internal_wb_we : std_logic;
 
+signal was_stb_and_stall : std_logic;
+signal saved_i_wb_data : std_logic_vector(31 downto 0);
+signal saved_wb_addr : std_logic_vector(21 downto 0);
+signal saved_wb_we : std_logic;
+
 begin
 
 	wb_stb <= internal_wb_stb;
@@ -73,7 +78,25 @@ begin
 			internal_wb_cyc <= '0';
 			internal_i_wb_data <= X"00000000";
 			priorclockmem <= '0';
+			was_stb_and_stall <= '0';
 		elsif rising_edge(clock) then
+			if ( (internal_wb_stb = '1' or internal_cfg_stb = '1')
+				and wb_stall = '1') then
+				if (was_stb_and_stall = '1') then
+					if (saved_i_wb_data /= internal_i_wb_data
+						or saved_wb_addr /= internal_wb_addr
+						or saved_wb_we /= internal_wb_we) then
+						flashstatus(1) <= '1';
+					end if;
+				else
+					was_stb_and_stall <= '1';
+					saved_i_wb_data <= internal_i_wb_data;
+					saved_wb_addr <= internal_wb_addr;
+					saved_wb_we <= internal_wb_we;
+				end if;
+			else
+				was_stb_and_stall <= '0';
+			end if;
 			if (internal_wb_cyc = '1'
 				and internal_cfg_stb = '1'
 				and wb_stall = '0'
