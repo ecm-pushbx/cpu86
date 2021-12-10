@@ -16,7 +16,7 @@ fi
 source="$1"
 shift
 
-nasm "$source" -f ith -o output.hex "$@"
+nasm "$source" -f ith -o output.hex -l output.lst "$@"
 (($?)) && exit $?
 
 # :02 0000 02 0380 79
