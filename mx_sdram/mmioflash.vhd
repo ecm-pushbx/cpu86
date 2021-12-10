@@ -95,6 +95,11 @@ begin
 					saved_wb_we <= internal_wb_we;
 				end if;
 			else
+				if (was_stb_and_stall = '1'
+					and internal_wb_stb = '0'
+					and internal_cfg_stb = '0') then
+					flashstatus(2) <= '1';
+				end if;
 				was_stb_and_stall <= '0';
 			end if;
 			if (internal_wb_cyc = '1'
