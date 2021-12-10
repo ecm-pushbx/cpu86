@@ -49,6 +49,7 @@ signal internal_cfg_stb : std_logic;
 signal internal_wb_cyc : std_logic;
 signal internal_i_wb_data : std_logic_vector(31 downto 0);
 signal internal_wb_addr : std_logic_vector(21 downto 0);
+signal internal_wb_we : std_logic;
 
 begin
 
@@ -57,6 +58,7 @@ begin
 	wb_cyc <= internal_wb_cyc;
 	i_wb_data <= internal_i_wb_data;
 	wb_addr <= internal_wb_addr;
+	wb_we <= internal_wb_we;
 
  process(abus, clock, clockmem, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
   begin
@@ -139,7 +141,7 @@ begin
 				if (abus="1100") then
 					if (data(0) = '1') then
 						internal_wb_addr <= flashaddress(21 downto 0);
-						wb_we <= '0';
+						internal_wb_we <= '0';
 						internal_wb_cyc <= '1';
 						internal_wb_stb <= '1';
 						internal_cfg_stb <= '0';
@@ -148,7 +150,7 @@ begin
 						flashduration <= X"00";
 					elsif (data(2) = '1') then
 						internal_wb_addr <= (others => '0');
-						wb_we <= '0';
+						internal_wb_we <= '0';
 						internal_wb_cyc <= '1';
 						internal_wb_stb <= '0';
 						internal_cfg_stb <= '1';
@@ -159,7 +161,7 @@ begin
 						internal_wb_addr <= (others => '0');
 						internal_i_wb_data(15 downto 0) <= flashdata(15 downto 0);
 						internal_i_wb_data(31 downto 16) <= (others => '0');
-						wb_we <= '1';
+						internal_wb_we <= '1';
 						internal_wb_cyc <= '1';
 						internal_wb_stb <= '0';
 						internal_cfg_stb <= '1';
