@@ -47,12 +47,14 @@ signal priorclockmem : std_logic;
 signal internal_wb_stb : std_logic;
 signal internal_cfg_stb : std_logic;
 signal internal_wb_cyc : std_logic;
+signal internal_i_wb_data : std_logic_vector(31 downto 0);
 
 begin
 
 	wb_stb <= internal_wb_stb;
 	cfg_stb <= internal_cfg_stb;
 	wb_cyc <= internal_wb_cyc;
+	i_wb_data <= internal_i_wb_data;
 
  process(abus, clock, clockmem, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
   begin
@@ -65,9 +67,20 @@ begin
 			internal_wb_stb <= '0';
 			internal_cfg_stb <= '0';
 			internal_wb_cyc <= '0';
-			i_wb_data <= X"00000000";
+			internal_i_wb_data <= X"00000000";
 			priorclockmem <= '0';
 		elsif rising_edge(clock) then
+			if (internal_wb_cyc = '1'
+				and internal_cfg_stb = '1'
+				and wb_stall = '0'
+				and internal_i_wb_data = X"0000109F") then
+				flashstatus(0) <= '1';
+			end if;
+			if (internal_cfg_stb = '1'
+				and wb_stall = '0'
+				and internal_i_wb_data /= X"0000109F") then
+				flashstatus(0) <= '0';
+			end if;
 			if (internal_wb_stb = '1' or internal_cfg_stb = '1') then
 				if (wb_stall = '0') then
 					internal_wb_stb <= '0';
@@ -142,7 +155,8 @@ begin
 						flashduration <= X"00";
 					elsif (data(3) = '1') then
 						wb_addr <= (others => '0');
-						i_wb_data <= flashdata;
+						internal_i_wb_data(15 downto 0) <= flashdata(15 downto 0);
+						internal_i_wb_data(31 downto 16) <= (others => '0');
 						wb_we <= '1';
 						internal_wb_cyc <= '1';
 						internal_wb_stb <= '0';
