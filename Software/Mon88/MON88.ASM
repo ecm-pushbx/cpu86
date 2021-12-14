@@ -53,8 +53,8 @@ ESC         EQU     01Bh
 ;BRATE_LOW   EQU 65
 ;BRATE_HIGH  EQU 0
 
-; Clock is apparently 5 MHz for the MAX1000 build
-CLOCK		equ 5_000_000
+; Clock is apparently 4 MHz for the MAX1000 build
+CLOCK		equ 4_000_000
 BAUD		equ 9600
 BRATE		equ ((CLOCK + (BAUD * 16 / 2)) / (BAUD * 16))
 
