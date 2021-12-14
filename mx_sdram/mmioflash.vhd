@@ -28,7 +28,6 @@ entity mmioflash is
 		  o_wb_data		: in std_logic_vector(31 downto 0);
 		  abus   : in  std_logic_vector(3 downto 0);
 		  clock	: in STD_LOGIC := '1';
-		  clockmem		: in STD_LOGIC := '1';
 		  data	: in STD_LOGIC_VECTOR(7 DOWNTO 0);
 		  wren	: in STD_LOGIC;
         dbus   : out std_logic_vector(7 downto 0);
@@ -43,7 +42,6 @@ signal flashaddress : std_logic_vector(31 downto 0);
 signal flashcontrol : std_logic_vector(7 downto 0);
 signal flashduration : std_logic_vector(7 downto 0);
 signal flashstatus : std_logic_vector(15 downto 0);
-signal priorclockmem : std_logic;
 signal internal_wb_stb : std_logic;
 signal internal_cfg_stb : std_logic;
 signal internal_wb_cyc : std_logic;
@@ -65,7 +63,7 @@ begin
 	wb_addr <= internal_wb_addr;
 	wb_we <= internal_wb_we;
 
- process(abus, clock, clockmem, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
+ process(abus, clock, wren, reset_n, flashcontrol, wb_ack, o_wb_data)
   begin
 		if (reset_n = '0') then
 			flashdata <= X"00000000";
@@ -77,7 +75,6 @@ begin
 			internal_cfg_stb <= '0';
 			internal_wb_cyc <= '0';
 			internal_i_wb_data <= X"00000000";
-			priorclockmem <= '0';
 			was_stb_and_stall <= '0';
 		elsif rising_edge(clock) then
 			if ( (internal_wb_stb = '1' or internal_cfg_stb = '1')
@@ -140,11 +137,6 @@ begin
 					flashcontrol(7) <= '0';
 				end if;
 			end if;
-		if (clockmem = '0') then
-			priorclockmem <= '0';
-		end if;
-		if (clockmem = '1' and priorclockmem = '0') then
-			priorclockmem <= '1';
 			if (wren='0') then
 				case abus is
 				 when "0000"  => dbus <= flashdata(7 downto 0);
@@ -219,7 +211,6 @@ begin
              when others    => null;
 				end case;
 				end if;
-			end if;
 			end if;
 		end if;
 end process;

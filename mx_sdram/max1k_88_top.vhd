@@ -260,8 +260,7 @@ pll0: entity work.pll12to40 PORT MAP (
 		wb_ack	=> dspi_ack,
 		o_wb_data=> dspi_o_data,
 		abus		=> abus(3 downto 0),
-		clock		=> clk_int80,
-		clockmem	=> clk40,
+		clock		=> clk40,
 		data		=> dbus_out,
 		wren		=> wrmmioflash,
 		dbus	   => dbus_mmioflash,
@@ -375,7 +374,7 @@ pll0: entity work.pll12to40 PORT MAP (
 
 
 flash0 : dualflexpress port map (
-		i_clk			=> clk_int80,
+		i_clk			=> clk40,
 		i_reset		=> reset,
 		i_wb_cyc		=> dspi_cyc,
 		i_wb_stb		=> dspi_stb,
